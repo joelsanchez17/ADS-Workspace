@@ -1,0 +1,615 @@
+diff -ru ADSProject/03_RV32I-pipeline/src/main/scala/ALU.scala ADSProject_Master/03_RV32I-pipeline/src/main/scala/ALU.scala
+--- ADSProject/03_RV32I-pipeline/src/main/scala/ALU.scala	2026-06-19 10:57:23.000000000 +0200
++++ ADSProject_Master/03_RV32I-pipeline/src/main/scala/ALU.scala	2026-06-24 15:48:23.000000000 +0200
+@@ -1 +1,52 @@
+-// ToDo: Add your ALU implementation from Assignment02 here
+\ No newline at end of file
++// ADS I Class Project
++// Assignment 02: Arithmetic Logic Unit and UVM Testbench
++//
++// Chair of Electronic Design Automation, RPTU University Kaiserslautern-Landau
++// File created on 09/21/2025 by Tharindu Samarakoon (gug75kex@rptu.de)
++// File updated on 10/29/2025 by Tobias Jauch (tobias.jauch@rptu.de)
++
++package Assignment02
++
++import chisel3._
++import chisel3.util._
++import chisel3.experimental.ChiselEnum
++
++object ALUOp extends ChiselEnum {
++  val ADD, SUB, AND, OR, XOR, SLL, SRL, SRA, SLT, SLTU, PASSB = Value
++}
++
++class ALU extends Module {
++  val width = 32
++  val io = IO(new Bundle {
++    val operation = Input(ALUOp())
++    val operandA  = Input(UInt(width.W))
++    val operandB  = Input(UInt(width.W))
++    val aluResult = Output(UInt(width.W))
++  })
++
++  // RV32: shift amount uses only the lower 5 bits of operand B
++  val shamt = io.operandB(4, 0)
++
++  // default case: decoder should avoid driving unknown ops
++  val res = WireInit(0.U(width.W))
++
++  switch(io.operation) {
++    is(ALUOp.ADD)  { res := io.operandA + io.operandB}                         // might produce wrap-around
++    is(ALUOp.SUB)  { res := io.operandA - io.operandB}
++    is(ALUOp.AND)  { res := io.operandA & io.operandB }
++    is(ALUOp.OR)   { res := io.operandA | io.operandB }
++    is(ALUOp.XOR)  { res := io.operandA ^ io.operandB }
++    is(ALUOp.SLL)  { res := io.operandA << shamt }
++    is(ALUOp.SRL)  { res := io.operandA >> shamt }                              // shift right logical
++    is(ALUOp.SRA)  { res := (io.operandA.asSInt >> shamt).asUInt }
++    is(ALUOp.SLT)  { res := (io.operandA.asSInt < io.operandB.asSInt).asUInt }
++    is(ALUOp.SLTU) { res := (io.operandA < io.operandB).asUInt }
++    is(ALUOp.PASSB){ res := io.operandB }                                       // e.g., LUI/AUIPC path
++  }
++
++  io.aluResult := res
++
++  // Simulation-time check: operation must be one of the enum values
++  assert(io.operation.isOneOf(ALUOp.all), "Illegal ALUOp: %d", io.operation.asUInt)
++
++}
+\ No newline at end of file
+diff -ru ADSProject/03_RV32I-pipeline/src/main/scala/common.scala ADSProject_Master/03_RV32I-pipeline/src/main/scala/common.scala
+--- ADSProject/03_RV32I-pipeline/src/main/scala/common.scala	2026-06-19 10:57:23.000000000 +0200
++++ ADSProject_Master/03_RV32I-pipeline/src/main/scala/common.scala	2026-06-24 15:48:23.000000000 +0200
+@@ -27,4 +27,33 @@
+ // Global Definitions and Data Types
+ // -----------------------------------------
+ 
+-//ToDo: Add your implementation according to the specification above here 
+\ No newline at end of file
++object uopc extends ChiselEnum {
++
++  // default case
++  val isNOP    = Value(0x00.U)
++
++  // R-type instructions
++  val isADD   = Value(0x01.U)
++  val isSUB   = Value(0x02.U)
++  val isXOR   = Value(0x03.U)
++  val isOR    = Value(0x04.U)
++  val isAND   = Value(0x05.U)
++  val isSLL   = Value(0x06.U)
++  val isSRL   = Value(0x07.U)
++  val isSRA   = Value(0x08.U)
++  val isSLT   = Value(0x09.U)
++  val isSLTU  = Value(0x0A.U)
++
++  // I-type instructions
++  val isADDI  = Value(0x10.U)  
++  val isXORI  = Value(0x11.U)
++  val isORI   = Value(0x12.U)
++  val isANDI  = Value(0x13.U)
++  val isSLTI  = Value(0x14.U)
++  val isSLTIU = Value(0x15.U)
++  val isSLLI  = Value(0x16.U)
++  val isSRLI  = Value(0x17.U)
++  val isSRAI  = Value(0x18.U)
++}
++
++import uopc._
+diff -ru ADSProject/03_RV32I-pipeline/src/main/scala/core.scala ADSProject_Master/03_RV32I-pipeline/src/main/scala/core.scala
+--- ADSProject/03_RV32I-pipeline/src/main/scala/core.scala	2026-06-19 10:57:23.000000000 +0200
++++ ADSProject_Master/03_RV32I-pipeline/src/main/scala/core.scala	2026-06-24 15:48:23.000000000 +0200
+@@ -58,9 +58,63 @@
+ 
+ class PipelinedRV32Icore (BinaryFile: String) extends Module {
+   val io = IO(new Bundle {
+-    //ToDo: Add I/O ports
++    val check_res = Output(UInt(32.W))
++    val exception = Output(Bool())
+   })
+ 
+-//ToDo: Add your implementation according to the specification above here 
++  // Pipeline Registers
++  val IFBarrier  = Module(new IFBarrier)
++  val IDBarrier  = Module(new IDBarrier)
++  val EXBarrier  = Module(new EXBarrier)
++  val MEMBarrier = Module(new MEMBarrier)
++  val WBBarrier  = Module(new WBBarrier)
++
++  // Pipeline Stages
++  val IF  = Module(new IF(BinaryFile))
++  val ID  = Module(new ID)
++  val EX  = Module(new EX)
++  val MEM = Module(new MEM)
++  val WB  = Module(new WB)
++
++  //Register File
++  val regFile = Module(new regFile)
++
++  // Connections for IOs
++  IFBarrier.io.inInstr      := IF.io.instr
++  
++  ID.io.instr               := IFBarrier.io.outInstr
++  ID.io.regFileReq_A        <> regFile.io.req_1
++  ID.io.regFileReq_B        <> regFile.io.req_2
++  ID.io.regFileResp_A       <> regFile.io.resp_1
++  ID.io.regFileResp_B       <> regFile.io.resp_2
++
++  IDBarrier.io.inUOP         := ID.io.uop
++  IDBarrier.io.inRD          := ID.io.rd
++  IDBarrier.io.inOperandA    := ID.io.operandA
++  IDBarrier.io.inOperandB    := ID.io.operandB
++  IDBarrier.io.inXcptInvalid := ID.io.XcptInvalid
++
++  EX.io.uop                  := IDBarrier.io.outUOP
++  EX.io.operandA             := IDBarrier.io.outOperandA
++  EX.io.operandB             := IDBarrier.io.outOperandB
++  EX.io.inXcptInvalid        := IDBarrier.io.outXcptInvalid
++
++  EXBarrier.io.inRD           := IDBarrier.io.outRD
++  EXBarrier.io.inAluResult    := EX.io.aluResult
++  EXBarrier.io.inXcptInvalid  := EX.io.outXcptInvalid
++
++  MEMBarrier.io.inRD          := EXBarrier.io.outRD
++  MEMBarrier.io.inAluResult   := EXBarrier.io.outAluResult
++  MEMBarrier.io.inXcptInvalid := EXBarrier.io.outXcptInvalid
++
++  WB.io.rd                  := MEMBarrier.io.outRD
++  WB.io.aluResult           := MEMBarrier.io.outAluResult
++  WB.io.regFileReq          <> regFile.io.req_3
++
++  WBBarrier.io.inCheckRes    := WB.io.check_res
++  WBBarrier.io.inXcptInvalid := MEMBarrier.io.outXcptInvalid
++
++  io.check_res               := WBBarrier.io.outCheckRes
++  io.exception               := WBBarrier.io.outXcptInvalid
+ 
+ }
+diff -ru ADSProject/03_RV32I-pipeline/src/main/scala/EXbarrier.scala ADSProject_Master/03_RV32I-pipeline/src/main/scala/EXbarrier.scala
+--- ADSProject/03_RV32I-pipeline/src/main/scala/EXbarrier.scala	2026-06-19 10:57:23.000000000 +0200
++++ ADSProject_Master/03_RV32I-pipeline/src/main/scala/EXbarrier.scala	2026-06-24 15:48:23.000000000 +0200
+@@ -34,5 +34,28 @@
+ // EX-Barrier
+ // -----------------------------------------
+ 
+-//ToDo: Add your implementation according to the specification above here 
++class EXBarrier extends Module {
++  val io = IO(new Bundle {
++    val inAluResult  = Input(UInt(32.W))
++    val outAluResult = Output(UInt(32.W))
++    val inRD           = Input(UInt(5.W))
++    val outRD          = Output(UInt(5.W))
++    val inXcptInvalid  = Input(Bool())
++    val outXcptInvalid = Output(Bool())
++  })
+ 
++  val aluResult   = RegInit(0.U(32.W))
++  val rd          = RegInit(0.U(5.W))
++  val XcptInvalid = RegInit(false.B)
++  val exception   = RegInit(false.B)
++
++  io.outAluResult := aluResult
++  aluResult       := io.inAluResult
++
++  io.outRD := rd
++  rd := io.inRD
++
++  io.outXcptInvalid := XcptInvalid
++  XcptInvalid := io.inXcptInvalid
++
++}
+diff -ru ADSProject/03_RV32I-pipeline/src/main/scala/EXstage.scala ADSProject_Master/03_RV32I-pipeline/src/main/scala/EXstage.scala
+--- ADSProject/03_RV32I-pipeline/src/main/scala/EXstage.scala	2026-06-19 10:57:23.000000000 +0200
++++ ADSProject_Master/03_RV32I-pipeline/src/main/scala/EXstage.scala	2026-06-24 15:48:23.000000000 +0200
+@@ -40,4 +40,48 @@
+ // Execute Stage
+ // -----------------------------------------
+ 
+-//ToDo: Add your implementation according to the specification above here 
++class EX extends Module {
++  val io = IO(new Bundle {
++    val uop       = Input(uopc())
++    val operandA   = Input(UInt(32.W))
++    val operandB   = Input(UInt(32.W))
++    val aluResult  = Output(UInt(32.W))
++    val inXcptInvalid = Input(Bool())
++    val outXcptInvalid = Output(Bool())
++  })
++
++  // Instantiate the ALU
++  val alu = Module(new ALU)
++
++  // Connect operands to ALU
++  alu.io.operandA := io.operandA
++  alu.io.operandB := io.operandB
++
++  // Map uopc operations to ALUOp
++  alu.io.operation := MuxLookup(io.uop.asUInt, ALUOp.ADD, Array(
++    isADD.asUInt   -> ALUOp.ADD,
++    isSUB.asUInt   -> ALUOp.SUB,
++    isADDI.asUInt  -> ALUOp.ADD,
++    isXOR.asUInt   -> ALUOp.XOR,
++    isXORI.asUInt  -> ALUOp.XOR,
++    isOR.asUInt    -> ALUOp.OR,
++    isORI.asUInt   -> ALUOp.OR,
++    isAND.asUInt   -> ALUOp.AND,
++    isANDI.asUInt  -> ALUOp.AND,
++    isSLL.asUInt   -> ALUOp.SLL,
++    isSLLI.asUInt  -> ALUOp.SLL,
++    isSRL.asUInt   -> ALUOp.SRL,
++    isSRLI.asUInt  -> ALUOp.SRL,
++    isSRA.asUInt   -> ALUOp.SRA,
++    isSRAI.asUInt  -> ALUOp.SRA,
++    isSLT.asUInt   -> ALUOp.SLT,
++    isSLTI.asUInt  -> ALUOp.SLT,
++    isSLTU.asUInt  -> ALUOp.SLTU,
++    isSLTIU.asUInt -> ALUOp.SLTU
++  ))
++
++  // Connect ALU result and exception to output
++  io.aluResult := alu.io.aluResult
++  io.outXcptInvalid := io.inXcptInvalid
++
++}
+diff -ru ADSProject/03_RV32I-pipeline/src/main/scala/IDbarrier.scala ADSProject_Master/03_RV32I-pipeline/src/main/scala/IDbarrier.scala
+--- ADSProject/03_RV32I-pipeline/src/main/scala/IDbarrier.scala	2026-06-19 10:57:23.000000000 +0200
++++ ADSProject_Master/03_RV32I-pipeline/src/main/scala/IDbarrier.scala	2026-06-24 15:48:23.000000000 +0200
+@@ -39,4 +39,38 @@
+ // ID-Barrier
+ // -----------------------------------------
+ 
+-//ToDo: Add your implementation according to the specification above here 
++class IDBarrier extends Module {
++  val io = IO(new Bundle {
++    val inUOP          = Input(uopc())
++    val inRD           = Input(UInt(5.W))
++    val inOperandA     = Input(UInt(32.W))
++    val inOperandB     = Input(UInt(32.W))
++    val inXcptInvalid  = Input(Bool())
++    val outUOP         = Output(uopc())
++    val outRD          = Output(UInt(5.W))
++    val outOperandA    = Output(UInt(32.W))
++    val outOperandB    = Output(UInt(32.W))
++    val outXcptInvalid = Output(Bool())
++  })
++
++  val uop         = Reg(uopc())
++  val rd          = RegInit(0.U(5.W))
++  val operandA    = RegInit(0.U(32.W))
++  val operandB    = RegInit(0.U(32.W))
++  val XcptInvalid = RegInit(false.B)
++
++  io.outUOP := uop
++  uop := io.inUOP
++
++  io.outRD := rd
++  rd := io.inRD
++
++  io.outOperandA := operandA
++  operandA := io.inOperandA
++  io.outOperandB := operandB
++  operandB := io.inOperandB
++
++  io.outXcptInvalid := XcptInvalid
++  XcptInvalid := io.inXcptInvalid
++
++}
+diff -ru ADSProject/03_RV32I-pipeline/src/main/scala/IDstage.scala ADSProject_Master/03_RV32I-pipeline/src/main/scala/IDstage.scala
+--- ADSProject/03_RV32I-pipeline/src/main/scala/IDstage.scala	2026-06-19 10:57:23.000000000 +0200
++++ ADSProject_Master/03_RV32I-pipeline/src/main/scala/IDstage.scala	2026-06-24 15:48:23.000000000 +0200
+@@ -45,4 +45,131 @@
+ // Decode Stage
+ // -----------------------------------------
+ 
+-//ToDo: Add your implementation according to the specification above here 
+\ No newline at end of file
++class ID extends Module {
++  val io = IO(new Bundle {
++    val regFileReq_A  = Flipped(new regFileReadReq) 
++    val regFileResp_A = Flipped(new regFileReadResp) 
++    val regFileReq_B  = Flipped(new regFileReadReq) 
++    val regFileResp_B = Flipped(new regFileReadResp) 
++    val instr         = Input(UInt(32.W))
++    val uop           = Output(uopc())
++    val rd            = Output(UInt(5.W))
++    val operandA      = Output(UInt(32.W))
++    val operandB      = Output(UInt(32.W))
++    val XcptInvalid   = Output(Bool())
++  })
++
++  val opcode  = io.instr(6, 0)
++  io.rd      := io.instr(11, 7)
++  val funct3  = io.instr(14, 12)
++  val rs1     = io.instr(19, 15)
++
++  // R-Type
++  val funct7  = io.instr(31, 25)
++  val rs2     = io.instr(24, 20)
++
++  // I-Type
++  val imm     = io.instr(31, 20)
++  // Sign-extend the 12-bit immediate to 32 bits
++  val immSignExt = Cat(Fill(20, imm(11)), imm)
++  
++  // Initialize signals
++  val isInvalid = WireInit(true.B)
++  
++  isInvalid := true.B
++  io.uop := isNOP
++
++  when(opcode === "b0110011".U){
++    when(funct3 === "b000".U){
++      when(funct7 === "b0000000".U){
++        io.uop := isADD
++        isInvalid := false.B
++      }.elsewhen(funct7 === "b0100000".U){
++        io.uop := isSUB
++        isInvalid := false.B
++      }
++    }.elsewhen(funct3 === "b100".U){
++      when(funct7 === "b0000000".U){
++        io.uop := isXOR
++        isInvalid := false.B
++      }
++    }.elsewhen(funct3 === "b110".U){
++      when(funct7 === "b0000000".U){
++        io.uop := isOR
++        isInvalid := false.B
++      }
++    }.elsewhen(funct3 === "b111".U){
++      when(funct7 === "b0000000".U){
++        io.uop := isAND
++        isInvalid := false.B
++      }
++    }.elsewhen(funct3 === "b001".U){
++      when(funct7 === "b0000000".U){
++        io.uop := isSLL
++        isInvalid := false.B
++      }
++    }.elsewhen(funct3 === "b101".U){
++      when(funct7 === "b0000000".U){
++        io.uop := isSRL
++        isInvalid := false.B
++      }.elsewhen(funct7 === "b0100000".U){
++        io.uop := isSRA
++        isInvalid := false.B
++      }
++    }.elsewhen(funct3 === "b010".U){
++      when(funct7 === "b0000000".U){
++        io.uop := isSLT
++        isInvalid := false.B
++      }
++    }.elsewhen(funct3 === "b011".U){
++      when(funct7 === "b0000000".U){
++        io.uop := isSLTU
++        isInvalid := false.B
++      }
++    }
++  }.elsewhen(opcode === "b0010011".U){
++    when(funct3 === "b000".U){
++      io.uop := isADDI
++      isInvalid := false.B
++    }.elsewhen(funct3 === "b100".U){
++      io.uop := isXORI
++      isInvalid := false.B
++    }.elsewhen(funct3 === "b110".U){
++      io.uop := isORI
++      isInvalid := false.B
++    }.elsewhen(funct3 === "b111".U){
++      io.uop := isANDI
++      isInvalid := false.B
++    }.elsewhen(funct3 === "b010".U){
++      io.uop := isSLTI
++      isInvalid := false.B
++    }.elsewhen(funct3 === "b011".U){
++      io.uop := isSLTIU
++      isInvalid := false.B
++    }.elsewhen(funct3 === "b001".U){
++      when(funct7 === "b0000000".U){
++        io.uop := isSLLI
++        isInvalid := false.B
++      }.elsewhen(funct3 === "b101".U){
++        when(funct7 === "b0000000".U){
++          io.uop := isSRLI
++          isInvalid := false.B
++        }.elsewhen(funct7 === "b0100000".U){
++          io.uop := isSRAI
++          isInvalid := false.B
++          }
++      }
++    }
++  }
++
++  io.XcptInvalid := isInvalid
++
++  // Operands
++  io.regFileReq_A.addr := rs1
++  io.regFileReq_B.addr := rs2
++
++  io.operandA := io.regFileResp_A.data
++  // IMM must be sign-extended for I-type instructions!
++  io.operandB := Mux(opcode === "b0110011".U, io.regFileResp_B.data, Mux(opcode === "b0010011".U, Cat(Fill(20, imm(11)), imm), 0.U))
++  
++}
+\ No newline at end of file
+diff -ru ADSProject/03_RV32I-pipeline/src/main/scala/IFbarrier.scala ADSProject_Master/03_RV32I-pipeline/src/main/scala/IFbarrier.scala
+--- ADSProject/03_RV32I-pipeline/src/main/scala/IFbarrier.scala	2026-06-19 10:57:23.000000000 +0200
++++ ADSProject_Master/03_RV32I-pipeline/src/main/scala/IFbarrier.scala	2026-06-24 15:48:23.000000000 +0200
+@@ -30,9 +30,13 @@
+ 
+ class IFBarrier extends Module {
+   val io = IO(new Bundle {
+-    //ToDo: Add I/O ports
++    val inInstr  = Input(UInt(32.W))
++    val outInstr = Output(UInt(32.W))
+   })
+ 
+-//ToDo: Add your implementation according to the specification above here 
++  val instrReg = RegInit(0.U(32.W))
++
++  io.outInstr := instrReg
++  instrReg    := io.inInstr
+ 
+ }
+diff -ru ADSProject/03_RV32I-pipeline/src/main/scala/IFstage.scala ADSProject_Master/03_RV32I-pipeline/src/main/scala/IFstage.scala
+--- ADSProject/03_RV32I-pipeline/src/main/scala/IFstage.scala	2026-06-19 10:57:23.000000000 +0200
++++ ADSProject_Master/03_RV32I-pipeline/src/main/scala/IFstage.scala	2026-06-24 15:48:23.000000000 +0200
+@@ -41,9 +41,18 @@
+ 
+ class IF (BinaryFile: String) extends Module {
+   val io = IO(new Bundle {
+-    // ToDo: Add I/O ports
++    val instr = Output(UInt(32.W))
+   })
+ 
+-//ToDo: Add your implementation according to the specification above here 
++  val IMem = Mem(4096, UInt(32.W))
++  loadMemoryFromFile(IMem, BinaryFile)
++
++  val PC = RegInit(0.U(32.W))
++  
++  io.instr := IMem(PC>>2.U)
++
++  // Update PC
++  // no jumps or branches, next PC always reads next address from IMEM
++  PC := PC + 4.U
+   
+ }
+diff -ru ADSProject/03_RV32I-pipeline/src/main/scala/MEMbarrier.scala ADSProject_Master/03_RV32I-pipeline/src/main/scala/MEMbarrier.scala
+--- ADSProject/03_RV32I-pipeline/src/main/scala/MEMbarrier.scala	2026-06-19 10:57:23.000000000 +0200
++++ ADSProject_Master/03_RV32I-pipeline/src/main/scala/MEMbarrier.scala	2026-06-24 15:48:23.000000000 +0200
+@@ -34,4 +34,27 @@
+ // MEM-Barrier
+ // -----------------------------------------
+ 
+-//ToDo: Add your implementation according to the specification above here 
++class MEMBarrier extends Module {
++  val io = IO(new Bundle {
++    val inAluResult  = Input(UInt(32.W))
++    val outAluResult = Output(UInt(32.W))
++    val inRD           = Input(UInt(5.W))
++    val outRD          = Output(UInt(5.W))
++    val inXcptInvalid  = Input(Bool())
++    val outXcptInvalid = Output(Bool())
++  })
++
++  val aluResult   = RegInit(0.U(32.W))
++  val rd          = RegInit(0.U(5.W))
++  val XcptInvalid = RegInit(false.B)
++
++  io.outAluResult := aluResult
++  aluResult       := io.inAluResult
++
++  io.outRD := rd
++  rd := io.inRD
++
++  io.outXcptInvalid := XcptInvalid
++  XcptInvalid := io.inXcptInvalid
++
++}
+diff -ru ADSProject/03_RV32I-pipeline/src/main/scala/MEMstage.scala ADSProject_Master/03_RV32I-pipeline/src/main/scala/MEMstage.scala
+--- ADSProject/03_RV32I-pipeline/src/main/scala/MEMstage.scala	2026-06-19 10:57:23.000000000 +0200
++++ ADSProject_Master/03_RV32I-pipeline/src/main/scala/MEMstage.scala	2026-06-24 15:48:23.000000000 +0200
+@@ -29,6 +29,6 @@
+ 
+   })
+ 
+-  // No memory operations implemented in Assignment03, nothing to do here! :)
++  // No memory operations implemented in Assignment03
+ 
+ }
+diff -ru ADSProject/03_RV32I-pipeline/src/main/scala/RegisterFile.scala ADSProject_Master/03_RV32I-pipeline/src/main/scala/RegisterFile.scala
+--- ADSProject/03_RV32I-pipeline/src/main/scala/RegisterFile.scala	2026-06-19 10:57:23.000000000 +0200
++++ ADSProject_Master/03_RV32I-pipeline/src/main/scala/RegisterFile.scala	2026-06-24 15:48:23.000000000 +0200
+@@ -36,22 +36,38 @@
+ // -----------------------------------------
+ 
+ class regFileReadReq extends Bundle {
+-    //ToDo: implement bundle for read request
++    val addr  = Input(UInt(5.W))
+ }
+ 
+ class regFileReadResp extends Bundle {
+-    //ToDo: implement bundle for read response
++    val data  = Output(UInt(32.W))
+ }
+ 
+ class regFileWriteReq extends Bundle {
+-    //ToDo: implement bundle for write request
++    val addr  = Input(UInt(5.W))
++    val data  = Input(UInt(32.W))
++    val wr_en = Input(Bool())
+ }
+ 
+ class regFile extends Module {
+   val io = IO(new Bundle {
+-    //ToDo: Add I/O ports 
++    val req_1  = new regFileReadReq
++    val resp_1 = new regFileReadResp
++    val req_2  = new regFileReadReq
++    val resp_2 = new regFileReadResp
++    val req_3  = new regFileWriteReq
+ })
+ 
+-//ToDo: Add your implementation according to the specification above here 
++  val regFile = Mem(32, UInt(32.W))
++  regFile(0) := 0.U                           // hard-wired zero for x0
++
++  when(io.req_3.wr_en){
++    when(io.req_3.addr =/= 0.U){
++      regFile(io.req_3.addr) := io.req_3.data
++    }
++  }
++
++  io.resp_1.data := Mux(io.req_1.addr === 0.U, 0.U, regFile(io.req_1.addr))
++  io.resp_2.data := Mux(io.req_2.addr === 0.U, 0.U, regFile(io.req_2.addr))
+ 
+ }
+diff -ru ADSProject/03_RV32I-pipeline/src/main/scala/WBbarrier.scala ADSProject_Master/03_RV32I-pipeline/src/main/scala/WBbarrier.scala
+--- ADSProject/03_RV32I-pipeline/src/main/scala/WBbarrier.scala	2026-06-19 10:57:23.000000000 +0200
++++ ADSProject_Master/03_RV32I-pipeline/src/main/scala/WBbarrier.scala	2026-06-24 15:48:23.000000000 +0200
+@@ -32,4 +32,20 @@
+ // WB-Barrier
+ // -----------------------------------------
+ 
+-//ToDo: Add your implementation according to the specification above here 
++class WBBarrier extends Module {
++  val io = IO(new Bundle {
++    val inCheckRes    = Input(UInt(32.W))
++    val outCheckRes   = Output(UInt(32.W))
++    val inXcptInvalid = Input(Bool())
++    val outXcptInvalid  = Output(Bool())
++  })
++
++  val check_res   = RegInit(0.U(32.W))
++  val XcptInvalid = RegInit(false.B)
++
++  io.outCheckRes := check_res
++  check_res      := io.inCheckRes
++
++  io.outXcptInvalid := XcptInvalid
++  XcptInvalid := io.inXcptInvalid
++}
+diff -ru ADSProject/03_RV32I-pipeline/src/main/scala/WBstage.scala ADSProject_Master/03_RV32I-pipeline/src/main/scala/WBstage.scala
+--- ADSProject/03_RV32I-pipeline/src/main/scala/WBstage.scala	2026-06-19 10:57:23.000000000 +0200
++++ ADSProject_Master/03_RV32I-pipeline/src/main/scala/WBstage.scala	2026-06-24 15:48:23.000000000 +0200
+@@ -40,4 +40,18 @@
+ // Writeback Stage
+ // -----------------------------------------
+ 
+-//ToDo: Add your implementation according to the specification above here 
++class WB extends Module {
++  val io = IO(new Bundle {
++    val regFileReq = Flipped(new regFileWriteReq) 
++    val rd         = Input(UInt(5.W))
++    val aluResult  = Input(UInt(32.W))
++    val check_res  = Output(UInt(32.W))
++  })
++
++ io.regFileReq.addr  := io.rd
++ io.regFileReq.data  := io.aluResult
++ io.regFileReq.wr_en := true.B
++
++ io.check_res := io.aluResult
++
++}

@@ -1,0 +1,7 @@
+~/opt/idea-IC-241.14494.240/bin/idea.sh
+
+Visual code
+command: code
+command: $HOME/vscode/code
+
+

@@ -1,0 +1,35 @@
+--- /import/lab/users/sanchez/Desktop/ADSProject_Master/03_RV32I-pipeline/src/main/scala/EXbarrier.scala	2026-06-24 15:48:23.000000000 +0200
++++ course_material/task3_level1/solution/src/main/scala/EXbarrier.scala	2026-06-28 14:14:49.737864739 +0200
+@@ -38,6 +38,10 @@
+   val io = IO(new Bundle {
+     val inAluResult  = Input(UInt(32.W))
+     val outAluResult = Output(UInt(32.W))
++    val inInstr        = Input(UInt(32.W))
++    val outInstr       = Output(UInt(32.W))
++    val inPC           = Input(UInt(32.W))
++    val outPC          = Output(UInt(32.W))
+     val inRD           = Input(UInt(5.W))
+     val outRD          = Output(UInt(5.W))
+     val inXcptInvalid  = Input(Bool())
+@@ -45,6 +49,8 @@
+   })
+ 
+   val aluResult   = RegInit(0.U(32.W))
++  val instr       = RegInit(0.U(32.W))
++  val pc          = RegInit(0.U(32.W))
+   val rd          = RegInit(0.U(5.W))
+   val XcptInvalid = RegInit(false.B)
+   val exception   = RegInit(false.B)
+@@ -52,6 +58,12 @@
+   io.outAluResult := aluResult
+   aluResult       := io.inAluResult
+ 
++  io.outInstr := instr
++  instr       := io.inInstr
++
++  io.outPC := pc
++  pc       := io.inPC
++
+   io.outRD := rd
+   rd := io.inRD
+ 

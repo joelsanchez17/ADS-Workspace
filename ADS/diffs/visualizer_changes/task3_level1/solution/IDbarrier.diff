@@ -1,0 +1,52 @@
+--- /import/lab/users/sanchez/Desktop/ADSProject_Master/03_RV32I-pipeline/src/main/scala/IDbarrier.scala	2026-06-24 15:48:23.000000000 +0200
++++ course_material/task3_level1/solution/src/main/scala/IDbarrier.scala	2026-06-28 14:14:49.737864739 +0200
+@@ -42,11 +42,19 @@
+ class IDBarrier extends Module {
+   val io = IO(new Bundle {
+     val inUOP          = Input(uopc())
++    val inInstr        = Input(UInt(32.W))
++    val inPC           = Input(UInt(32.W))
++    val inRS1          = Input(UInt(5.W))
++    val inRS2          = Input(UInt(5.W))
+     val inRD           = Input(UInt(5.W))
+     val inOperandA     = Input(UInt(32.W))
+     val inOperandB     = Input(UInt(32.W))
+     val inXcptInvalid  = Input(Bool())
+     val outUOP         = Output(uopc())
++    val outInstr       = Output(UInt(32.W))
++    val outPC          = Output(UInt(32.W))
++    val outRS1         = Output(UInt(5.W))
++    val outRS2         = Output(UInt(5.W))
+     val outRD          = Output(UInt(5.W))
+     val outOperandA    = Output(UInt(32.W))
+     val outOperandB    = Output(UInt(32.W))
+@@ -54,6 +62,10 @@
+   })
+ 
+   val uop         = Reg(uopc())
++  val instr       = RegInit(0.U(32.W))
++  val pc          = RegInit(0.U(32.W))
++  val rs1         = RegInit(0.U(5.W))
++  val rs2         = RegInit(0.U(5.W))
+   val rd          = RegInit(0.U(5.W))
+   val operandA    = RegInit(0.U(32.W))
+   val operandB    = RegInit(0.U(32.W))
+@@ -62,6 +74,18 @@
+   io.outUOP := uop
+   uop := io.inUOP
+ 
++  io.outInstr := instr
++  instr := io.inInstr
++
++  io.outPC := pc
++  pc := io.inPC
++
++  io.outRS1 := rs1
++  rs1 := io.inRS1
++
++  io.outRS2 := rs2
++  rs2 := io.inRS2
++
+   io.outRD := rd
+   rd := io.inRD
+ 

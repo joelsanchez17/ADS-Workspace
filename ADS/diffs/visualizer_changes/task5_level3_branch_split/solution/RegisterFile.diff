@@ -1,0 +1,21 @@
+--- /import/lab/users/sanchez/Desktop/ADSProject_Master/05_branch_instructions/src/main/scala/RegisterFile.scala	2026-06-24 15:48:23.000000000 +0200
++++ course_material/task5_level3_branch/solution/src/main/scala/RegisterFile.scala	2026-07-05 14:04:02.030980574 +0200
+@@ -56,6 +56,8 @@
+     val req_2  = new regFileReadReq
+     val resp_2 = new regFileReadResp
+     val req_3  = new regFileWriteReq
++    val gpRegVal = Output(UInt(32.W))
++    val debug_regs = Output(Vec(32, UInt(32.W)))
+ })
+ 
+   val regFile = Mem(32, UInt(32.W))
+@@ -71,5 +73,9 @@
+     Mux(io.req_3.wr_en && io.req_1.addr === io.req_3.addr, io.req_3.data, regFile(io.req_1.addr)))
+   io.resp_2.data := Mux(io.req_2.addr === 0.U, 0.U,
+     Mux(io.req_3.wr_en && io.req_2.addr === io.req_3.addr, io.req_3.data, regFile(io.req_2.addr)))
++  io.gpRegVal := regFile(3)
++  for (i <- 0 until 32) {
++    io.debug_regs(i) := Mux(i.U === 0.U, 0.U, regFile(i))
++  }
+ 
+ }

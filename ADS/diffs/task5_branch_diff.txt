@@ -1,0 +1,890 @@
+diff -ru /import/lab/users/sanchez/Desktop/ADSProject/05_branch_instructions/src/main/scala/ALU.scala /import/lab/users/sanchez/Desktop/ADSProject_Master/05_branch_instructions/src/main/scala/ALU.scala
+--- /import/lab/users/sanchez/Desktop/ADSProject/05_branch_instructions/src/main/scala/ALU.scala	2026-06-19 10:57:23.000000000 +0200
++++ /import/lab/users/sanchez/Desktop/ADSProject_Master/05_branch_instructions/src/main/scala/ALU.scala	2026-06-24 15:48:23.000000000 +0200
+@@ -1 +1,52 @@
+-// ToDo: Add your ALU implementation from Assignment02 here
+\ No newline at end of file
++// ADS I Class Project
++// Assignment 02: Arithmetic Logic Unit and UVM Testbench
++//
++// Chair of Electronic Design Automation, RPTU University Kaiserslautern-Landau
++// File created on 09/21/2025 by Tharindu Samarakoon (gug75kex@rptu.de)
++// File updated on 10/29/2025 by Tobias Jauch (tobias.jauch@rptu.de)
++
++package Assignment02
++
++import chisel3._
++import chisel3.util._
++import chisel3.experimental.ChiselEnum
++
++object ALUOp extends ChiselEnum {
++  val ADD, SUB, AND, OR, XOR, SLL, SRL, SRA, SLT, SLTU, PASSB = Value
++}
++
++class ALU extends Module {
++  val width = 32
++  val io = IO(new Bundle {
++    val operation = Input(ALUOp())
++    val operandA  = Input(UInt(width.W))
++    val operandB  = Input(UInt(width.W))
++    val aluResult = Output(UInt(width.W))
++  })
++
++  // RV32: shift amount uses only the lower 5 bits of operand B
++  val shamt = io.operandB(4, 0)
++
++  // default case: decoder should avoid driving unknown ops
++  val res = WireInit(0.U(width.W))
++
++  switch(io.operation) {
++    is(ALUOp.ADD)  { res := io.operandA + io.operandB}                         // might produce wrap-around
++    is(ALUOp.SUB)  { res := io.operandA - io.operandB}
++    is(ALUOp.AND)  { res := io.operandA & io.operandB }
++    is(ALUOp.OR)   { res := io.operandA | io.operandB }
++    is(ALUOp.XOR)  { res := io.operandA ^ io.operandB }
++    is(ALUOp.SLL)  { res := io.operandA << shamt }
++    is(ALUOp.SRL)  { res := io.operandA >> shamt }                              // shift right logical
++    is(ALUOp.SRA)  { res := (io.operandA.asSInt >> shamt).asUInt }
++    is(ALUOp.SLT)  { res := (io.operandA.asSInt < io.operandB.asSInt).asUInt }
++    is(ALUOp.SLTU) { res := (io.operandA < io.operandB).asUInt }
++    is(ALUOp.PASSB){ res := io.operandB }                                       // e.g., LUI/AUIPC path
++  }
++
++  io.aluResult := res
++
++  // Simulation-time check: operation must be one of the enum values
++  assert(io.operation.isOneOf(ALUOp.all), "Illegal ALUOp: %d", io.operation.asUInt)
++
++}
+\ No newline at end of file
+diff -ru /import/lab/users/sanchez/Desktop/ADSProject/05_branch_instructions/src/main/scala/common.scala /import/lab/users/sanchez/Desktop/ADSProject_Master/05_branch_instructions/src/main/scala/common.scala
+--- /import/lab/users/sanchez/Desktop/ADSProject/05_branch_instructions/src/main/scala/common.scala	2026-06-19 10:57:23.000000000 +0200
++++ /import/lab/users/sanchez/Desktop/ADSProject_Master/05_branch_instructions/src/main/scala/common.scala	2026-06-24 15:48:23.000000000 +0200
+@@ -27,4 +27,45 @@
+ // Global Definitions and Data Types
+ // -----------------------------------------
+ 
+-//ToDo: Add your implementation according to the specification above here 
+\ No newline at end of file
++object uopc extends ChiselEnum {
++
++  // default case
++  val isNOP    = Value(0x00.U)
++
++  // R-type instructions
++  val isADD   = Value(0x01.U)
++  val isSUB   = Value(0x02.U)
++  val isXOR   = Value(0x03.U)
++  val isOR    = Value(0x04.U)
++  val isAND   = Value(0x05.U)
++  val isSLL   = Value(0x06.U)
++  val isSRL   = Value(0x07.U)
++  val isSRA   = Value(0x08.U)
++  val isSLT   = Value(0x09.U)
++  val isSLTU  = Value(0x0A.U)
++
++  // I-type instructions
++  val isADDI  = Value(0x10.U)  
++  val isXORI  = Value(0x11.U)
++  val isORI   = Value(0x12.U)
++  val isANDI  = Value(0x13.U)
++  val isSLTI  = Value(0x14.U)
++  val isSLTIU = Value(0x15.U)
++  val isSLLI  = Value(0x16.U)
++  val isSRLI  = Value(0x17.U)
++  val isSRAI  = Value(0x18.U)
++
++  // B-type instructions
++  val isBEQ   = Value(0x20.U)
++  val isBNE   = Value(0x21.U)
++  val isBLT   = Value(0x22.U)
++  val isBGE   = Value(0x23.U)
++  val isBLTU  = Value(0x24.U)
++  val isBGEU  = Value(0x25.U)
++
++  // J-type/control-transfer instructions
++  val isJAL   = Value(0x30.U)
++  val isJALR  = Value(0x31.U)
++}
++
++import uopc._
+diff -ru /import/lab/users/sanchez/Desktop/ADSProject/05_branch_instructions/src/main/scala/core.scala /import/lab/users/sanchez/Desktop/ADSProject_Master/05_branch_instructions/src/main/scala/core.scala
+--- /import/lab/users/sanchez/Desktop/ADSProject/05_branch_instructions/src/main/scala/core.scala	2026-06-19 10:57:23.000000000 +0200
++++ /import/lab/users/sanchez/Desktop/ADSProject_Master/05_branch_instructions/src/main/scala/core.scala	2026-06-24 15:48:23.000000000 +0200
+@@ -32,7 +32,7 @@
+             Operands (operandA and operandB) are determined based on the instruction type.
+ 
+         Execute Stage:
+-            Arithmetic and logic operations, including branch target calculation, are performed based on the control signals and operands.
++            Arithmetic and logic operations are performed based on the control signals and operands.
+             The result is stored in the aluResult register.
+ 
+         Memory Stage:
+@@ -58,9 +58,93 @@
+ 
+ class PipelinedRV32Icore (BinaryFile: String) extends Module {
+   val io = IO(new Bundle {
+-    //ToDo: Add I/O ports
++    val check_res = Output(UInt(32.W))
++    val exception = Output(Bool())
+   })
+ 
+-//ToDo: Add your implementation according to the specification above here 
++  // Pipeline Registers
++  val IFBarrier  = Module(new IFBarrier)
++  val IDBarrier  = Module(new IDBarrier)
++  val EXBarrier  = Module(new EXBarrier)
++  val MEMBarrier = Module(new MEMBarrier)
++  val WBBarrier  = Module(new WBBarrier)
++
++  // Pipeline Stages
++  val IF  = Module(new IF(BinaryFile))
++  val ID  = Module(new ID)
++  val EX  = Module(new EX)
++  val MEM = Module(new MEM)
++  val WB  = Module(new WB)
++
++  //Register File
++  val regFile = Module(new regFile)
++
++  //Forwarding Unit
++  val ForwardingUnit = Module(new ForwardingUnit)
++
++  // Connections for IOs
++  IF.io.redirect             := EX.io.redirect
++  IF.io.redirectPC           := EX.io.redirectPC
++
++  IFBarrier.io.inInstr      := IF.io.instr
++  IFBarrier.io.inPC         := IF.io.pc
++  IFBarrier.io.flush        := EX.io.redirect
++  
++  ID.io.instr               := IFBarrier.io.outInstr
++  ID.io.regFileReq_A        <> regFile.io.req_1
++  ID.io.regFileReq_B        <> regFile.io.req_2
++  ID.io.regFileResp_A       <> regFile.io.resp_1
++  ID.io.regFileResp_B       <> regFile.io.resp_2
++
++  IDBarrier.io.inUOP         := ID.io.uop
++  IDBarrier.io.inRS1         := ID.io.rs1
++  IDBarrier.io.inRS2         := ID.io.rs2
++  IDBarrier.io.inRD          := ID.io.rd
++  IDBarrier.io.inOperandA    := ID.io.operandA
++  IDBarrier.io.inOperandB    := ID.io.operandB
++  IDBarrier.io.inImm         := ID.io.imm
++  IDBarrier.io.inPC          := IFBarrier.io.outPC
++  IDBarrier.io.inWrEn        := ID.io.wrEN
++  IDBarrier.io.inXcptInvalid := ID.io.XcptInvalid
++  IDBarrier.io.flush         := EX.io.redirect
++
++  EX.io.uop                  := IDBarrier.io.outUOP
++  EX.io.operandA             := IDBarrier.io.outOperandA
++  EX.io.operandB             := IDBarrier.io.outOperandB
++  EX.io.imm                  := IDBarrier.io.outImm
++  EX.io.pc                   := IDBarrier.io.outPC
++  EX.io.forwardA             := ForwardingUnit.io.forwardA
++  EX.io.forwardB             := ForwardingUnit.io.forwardB
++  EX.io.memResult            := EXBarrier.io.outAluResult
++  EX.io.wbResult             := MEMBarrier.io.outAluResult
++  EX.io.inXcptInvalid        := IDBarrier.io.outXcptInvalid
++
++  EXBarrier.io.inRD           := IDBarrier.io.outRD
++  EXBarrier.io.inWrEn         := IDBarrier.io.outWrEn
++  EXBarrier.io.inAluResult    := EX.io.aluResult
++  EXBarrier.io.inXcptInvalid  := EX.io.outXcptInvalid
++
++  MEMBarrier.io.inRD          := EXBarrier.io.outRD
++  MEMBarrier.io.inAluResult   := EXBarrier.io.outAluResult
++  MEMBarrier.io.inWrEn        := EXBarrier.io.outWrEn
++  MEMBarrier.io.inXcptInvalid := EXBarrier.io.outXcptInvalid
++
++  WB.io.rd                  := MEMBarrier.io.outRD
++  WB.io.wrEN                := MEMBarrier.io.outWrEn
++  WB.io.aluResult           := MEMBarrier.io.outAluResult
++  WB.io.regFileReq          <> regFile.io.req_3
++
++  WBBarrier.io.inCheckRes    := WB.io.check_res
++  WBBarrier.io.inXcptInvalid := MEMBarrier.io.outXcptInvalid
++
++  ForwardingUnit.io.rs1_EX   := IDBarrier.io.outRS1
++  ForwardingUnit.io.rs2_EX   := IDBarrier.io.outRS2
++  ForwardingUnit.io.rd_MEM   := EXBarrier.io.outRD
++  ForwardingUnit.io.rd_WB    := MEMBarrier.io.outRD
++  ForwardingUnit.io.wrEn_MEM := EXBarrier.io.outWrEn
++  ForwardingUnit.io.wrEn_WB  := MEMBarrier.io.outWrEn
++
++  io.check_res               := WBBarrier.io.outCheckRes
++  io.exception               := WBBarrier.io.outXcptInvalid
+ 
+ }
+diff -ru /import/lab/users/sanchez/Desktop/ADSProject/05_branch_instructions/src/main/scala/EXbarrier.scala /import/lab/users/sanchez/Desktop/ADSProject_Master/05_branch_instructions/src/main/scala/EXbarrier.scala
+--- /import/lab/users/sanchez/Desktop/ADSProject/05_branch_instructions/src/main/scala/EXbarrier.scala	2026-06-19 10:57:23.000000000 +0200
++++ /import/lab/users/sanchez/Desktop/ADSProject_Master/05_branch_instructions/src/main/scala/EXbarrier.scala	2026-06-24 15:48:23.000000000 +0200
+@@ -34,5 +34,34 @@
+ // EX-Barrier
+ // -----------------------------------------
+ 
+-//ToDo: Add your implementation according to the specification above here 
++class EXBarrier extends Module {
++  val io = IO(new Bundle {
++    val inAluResult  = Input(UInt(32.W))
++    val outAluResult = Output(UInt(32.W))
++    val inRD           = Input(UInt(5.W))
++    val outRD          = Output(UInt(5.W))
++    val inWrEn         = Input(Bool())
++    val outWrEn        = Output(Bool())
++    val inXcptInvalid  = Input(Bool())
++    val outXcptInvalid = Output(Bool())
++  })
+ 
++  val aluResult   = RegInit(0.U(32.W))
++  val rd          = RegInit(0.U(5.W))
++  val wrEN        = RegInit(false.B)
++  val XcptInvalid = RegInit(false.B)
++  val exception   = RegInit(false.B)
++
++  io.outAluResult := aluResult
++  aluResult       := io.inAluResult
++
++  io.outRD := rd
++  rd := io.inRD
++
++  io.outWrEn := wrEN
++  wrEN := io.inWrEn
++
++  io.outXcptInvalid := XcptInvalid
++  XcptInvalid := io.inXcptInvalid
++
++}
+diff -ru /import/lab/users/sanchez/Desktop/ADSProject/05_branch_instructions/src/main/scala/EXstage.scala /import/lab/users/sanchez/Desktop/ADSProject_Master/05_branch_instructions/src/main/scala/EXstage.scala
+--- /import/lab/users/sanchez/Desktop/ADSProject/05_branch_instructions/src/main/scala/EXstage.scala	2026-06-19 10:57:23.000000000 +0200
++++ /import/lab/users/sanchez/Desktop/ADSProject_Master/05_branch_instructions/src/main/scala/EXstage.scala	2026-06-24 15:48:23.000000000 +0200
+@@ -27,8 +27,6 @@
+ Outputs:
+     aluResult: computation result from ALU
+     exception: pass exception flag
+-    branchTarget: calculated branch target address for conditional branch instructions
+-    flush: control signal to flush pipeline on mispredicted branches
+ */
+ 
+ package core_tile
+@@ -42,4 +40,80 @@
+ // Execute Stage
+ // -----------------------------------------
+ 
+-//ToDo: Add your implementation according to the specification above here 
++class EX extends Module {
++  val io = IO(new Bundle {
++    val uop       = Input(uopc())
++    val operandA   = Input(UInt(32.W))
++    val operandB   = Input(UInt(32.W))
++    val imm        = Input(UInt(32.W))
++    val pc         = Input(UInt(32.W))
++    val forwardA   = Input(UInt(2.W))
++    val forwardB   = Input(UInt(2.W))
++    val memResult  = Input(UInt(32.W))
++    val wbResult   = Input(UInt(32.W))
++    val aluResult  = Output(UInt(32.W))
++    val redirect   = Output(Bool())
++    val redirectPC = Output(UInt(32.W))
++    val inXcptInvalid = Input(Bool())
++    val outXcptInvalid = Output(Bool())
++  })
++
++  // Instantiate the ALU
++  val alu = Module(new ALU)
++
++  val operandA = MuxLookup(io.forwardA, io.operandA, Array(
++    "b01".U -> io.wbResult,
++    "b10".U -> io.memResult
++  ))
++  val operandB = MuxLookup(io.forwardB, io.operandB, Array(
++    "b01".U -> io.wbResult,
++    "b10".U -> io.memResult
++  ))
++
++  // Connect operands to ALU
++  alu.io.operandA := operandA
++  alu.io.operandB := operandB
++
++  // Map uopc operations to ALUOp
++  alu.io.operation := MuxLookup(io.uop.asUInt, ALUOp.ADD, Array(
++    isADD.asUInt   -> ALUOp.ADD,
++    isSUB.asUInt   -> ALUOp.SUB,
++    isADDI.asUInt  -> ALUOp.ADD,
++    isXOR.asUInt   -> ALUOp.XOR,
++    isXORI.asUInt  -> ALUOp.XOR,
++    isOR.asUInt    -> ALUOp.OR,
++    isORI.asUInt   -> ALUOp.OR,
++    isAND.asUInt   -> ALUOp.AND,
++    isANDI.asUInt  -> ALUOp.AND,
++    isSLL.asUInt   -> ALUOp.SLL,
++    isSLLI.asUInt  -> ALUOp.SLL,
++    isSRL.asUInt   -> ALUOp.SRL,
++    isSRLI.asUInt  -> ALUOp.SRL,
++    isSRA.asUInt   -> ALUOp.SRA,
++    isSRAI.asUInt  -> ALUOp.SRA,
++    isSLT.asUInt   -> ALUOp.SLT,
++    isSLTI.asUInt  -> ALUOp.SLT,
++    isSLTU.asUInt  -> ALUOp.SLTU,
++    isSLTIU.asUInt -> ALUOp.SLTU
++  ))
++
++  val isBranch = io.uop.isOneOf(isBEQ, isBNE, isBLT, isBGE, isBLTU, isBGEU)
++  val isJump = io.uop.isOneOf(isJAL, isJALR)
++  val branchTaken = MuxLookup(io.uop.asUInt, false.B, Array(
++    isBEQ.asUInt  -> (operandA === operandB),
++    isBNE.asUInt  -> (operandA =/= operandB),
++    isBLT.asUInt  -> (operandA.asSInt < operandB.asSInt),
++    isBGE.asUInt  -> (operandA.asSInt >= operandB.asSInt),
++    isBLTU.asUInt -> (operandA < operandB),
++    isBGEU.asUInt -> (operandA >= operandB)
++  ))
++  val jalrTarget = (operandA + io.imm) & "hfffffffe".U(32.W)
++
++  io.redirect := (isBranch && branchTaken) || isJump
++  io.redirectPC := Mux(io.uop === isJALR, jalrTarget, io.pc + io.imm)
++
++  // Connect ALU result and exception to output
++  io.aluResult := Mux(isJump, io.pc + 4.U, alu.io.aluResult)
++  io.outXcptInvalid := io.inXcptInvalid
++
++}
+diff -ru /import/lab/users/sanchez/Desktop/ADSProject/05_branch_instructions/src/main/scala/ForwardingUnit.scala /import/lab/users/sanchez/Desktop/ADSProject_Master/05_branch_instructions/src/main/scala/ForwardingUnit.scala
+--- /import/lab/users/sanchez/Desktop/ADSProject/05_branch_instructions/src/main/scala/ForwardingUnit.scala	2026-06-19 10:57:23.000000000 +0200
++++ /import/lab/users/sanchez/Desktop/ADSProject_Master/05_branch_instructions/src/main/scala/ForwardingUnit.scala	2026-06-24 15:48:23.000000000 +0200
+@@ -38,9 +38,22 @@
+ 
+ class ForwardingUnit extends Module {
+   val io = IO(new Bundle {
+-    // Add I/O ports according to the specification above here
++    val rs1_EX   = Input(UInt(5.W))
++    val rs2_EX   = Input(UInt(5.W))
++    val rd_MEM   = Input(UInt(5.W))
++    val rd_WB    = Input(UInt(5.W))
++    val wrEn_MEM = Input(Bool())
++    val wrEn_WB  = Input(Bool())
++    val forwardA = Output(UInt(2.W))
++    val forwardB = Output(UInt(2.W))
+   })
+ 
+-  //ToDo: Add your implementation according to the specification above here 
++  val memHazardA = io.wrEn_MEM && (io.rd_MEM =/= 0.U) && (io.rd_MEM === io.rs1_EX)
++  val memHazardB = io.wrEn_MEM && (io.rd_MEM =/= 0.U) && (io.rd_MEM === io.rs2_EX)
++  val wbHazardA  = io.wrEn_WB && (io.rd_WB =/= 0.U) && (io.rd_WB === io.rs1_EX)
++  val wbHazardB  = io.wrEn_WB && (io.rd_WB =/= 0.U) && (io.rd_WB === io.rs2_EX)
+ 
+-}
+\ No newline at end of file
++  io.forwardA := Mux(memHazardA, "b10".U, Mux(wbHazardA, "b01".U, "b00".U))
++  io.forwardB := Mux(memHazardB, "b10".U, Mux(wbHazardB, "b01".U, "b00".U))
++
++}
+diff -ru /import/lab/users/sanchez/Desktop/ADSProject/05_branch_instructions/src/main/scala/IDbarrier.scala /import/lab/users/sanchez/Desktop/ADSProject_Master/05_branch_instructions/src/main/scala/IDbarrier.scala
+--- /import/lab/users/sanchez/Desktop/ADSProject/05_branch_instructions/src/main/scala/IDbarrier.scala	2026-06-19 10:57:23.000000000 +0200
++++ /import/lab/users/sanchez/Desktop/ADSProject_Master/05_branch_instructions/src/main/scala/IDbarrier.scala	2026-06-24 15:48:23.000000000 +0200
+@@ -39,4 +39,69 @@
+ // ID-Barrier
+ // -----------------------------------------
+ 
+-//ToDo: Add your implementation according to the specification above here 
++class IDBarrier extends Module {
++  val io = IO(new Bundle {
++    val inUOP          = Input(uopc())
++    val inRS1          = Input(UInt(5.W))          
++    val inRS2          = Input(UInt(5.W))
++    val inRD           = Input(UInt(5.W))
++    val inOperandA     = Input(UInt(32.W))
++    val inOperandB     = Input(UInt(32.W))
++    val inImm          = Input(UInt(32.W))
++    val inPC           = Input(UInt(32.W))
++    val inWrEn         = Input(Bool())
++    val inXcptInvalid  = Input(Bool())
++    val flush          = Input(Bool())
++    val outUOP         = Output(uopc())
++    val outRS1         = Output(UInt(5.W))          
++    val outRS2         = Output(UInt(5.W))
++    val outRD          = Output(UInt(5.W))
++    val outOperandA    = Output(UInt(32.W))
++    val outOperandB    = Output(UInt(32.W))
++    val outImm         = Output(UInt(32.W))
++    val outPC          = Output(UInt(32.W))
++    val outWrEn        = Output(Bool())
++    val outXcptInvalid = Output(Bool())
++  })
++
++  val uop         = RegInit(isNOP)
++  val rs1         = RegInit(0.U(5.W))
++  val rs2         = RegInit(0.U(5.W))
++  val rd          = RegInit(0.U(5.W))
++  val operandA    = RegInit(0.U(32.W))
++  val operandB    = RegInit(0.U(32.W))
++  val imm         = RegInit(0.U(32.W))
++  val pc          = RegInit(0.U(32.W))
++  val wrEN        = RegInit(false.B)
++  val XcptInvalid = RegInit(false.B)
++
++  io.outUOP := uop
++  uop := Mux(io.flush, isNOP, io.inUOP)
++
++  io.outRS1 := rs1
++  rs1 := Mux(io.flush, 0.U, io.inRS1)
++
++  io.outRS2 := rs2
++  rs2 := Mux(io.flush, 0.U, io.inRS2)
++
++  io.outRD := rd
++  rd := Mux(io.flush, 0.U, io.inRD)
++
++  io.outOperandA := operandA
++  operandA := Mux(io.flush, 0.U, io.inOperandA)
++  io.outOperandB := operandB
++  operandB := Mux(io.flush, 0.U, io.inOperandB)
++
++  io.outImm := imm
++  imm := Mux(io.flush, 0.U, io.inImm)
++
++  io.outPC := pc
++  pc := Mux(io.flush, 0.U, io.inPC)
++
++  io.outWrEn := wrEN
++  wrEN := Mux(io.flush, false.B, io.inWrEn)
++
++  io.outXcptInvalid := XcptInvalid
++  XcptInvalid := Mux(io.flush, false.B, io.inXcptInvalid)
++
++}
+diff -ru /import/lab/users/sanchez/Desktop/ADSProject/05_branch_instructions/src/main/scala/IDstage.scala /import/lab/users/sanchez/Desktop/ADSProject_Master/05_branch_instructions/src/main/scala/IDstage.scala
+--- /import/lab/users/sanchez/Desktop/ADSProject/05_branch_instructions/src/main/scala/IDstage.scala	2026-06-19 10:57:23.000000000 +0200
++++ /import/lab/users/sanchez/Desktop/ADSProject_Master/05_branch_instructions/src/main/scala/IDstage.scala	2026-06-24 15:48:23.000000000 +0200
+@@ -25,7 +25,7 @@
+ 
+ Functionality:
+     Decode opcode to determine instruction and identify operation (ADD, SUB, XOR, ...)
+-    Handle flushes due to mispredicted branches
++    Output: uop (operation code), rd, operandA (from rs1), operandB (rs2 or immediate)
+ 
+ Outputs:
+     uop: micro-operation code (identifies instruction type)
+@@ -45,4 +45,195 @@
+ // Decode Stage
+ // -----------------------------------------
+ 
+-//ToDo: Add your implementation according to the specification above here 
+\ No newline at end of file
++class ID extends Module {
++  val io = IO(new Bundle {
++    val regFileReq_A  = Flipped(new regFileReadReq) 
++    val regFileResp_A = Flipped(new regFileReadResp) 
++    val regFileReq_B  = Flipped(new regFileReadReq) 
++    val regFileResp_B = Flipped(new regFileReadResp) 
++    val instr         = Input(UInt(32.W))
++    val uop           = Output(uopc())
++    val rs1           = Output(UInt(5.W))
++    val rs2           = Output(UInt(5.W))
++    val rd            = Output(UInt(5.W))
++    val operandA      = Output(UInt(32.W))
++    val operandB      = Output(UInt(32.W))
++    val imm           = Output(UInt(32.W))
++    val wrEN          = Output(Bool())
++    val XcptInvalid   = Output(Bool())
++  })
++
++  val opcode  = io.instr(6, 0)
++  io.rd      := io.instr(11, 7)
++  val funct3  = io.instr(14, 12)
++  val rs1     = io.instr(19, 15)
++
++  // R-Type
++  val funct7  = io.instr(31, 25)
++  val rs2     = io.instr(24, 20)
++
++  // Immediates
++  val immI = Cat(Fill(20, io.instr(31)), io.instr(31, 20))
++  val immB = Cat(Fill(19, io.instr(31)), io.instr(31), io.instr(7), io.instr(30, 25), io.instr(11, 8), 0.U(1.W))
++  val immJ = Cat(Fill(11, io.instr(31)), io.instr(31), io.instr(19, 12), io.instr(20), io.instr(30, 21), 0.U(1.W))
++  
++  // Initialize signals
++  val isInvalid = WireInit(true.B)
++  io.wrEN := false.B
++  
++  isInvalid := true.B
++  io.uop := isNOP
++
++  when(opcode === "b0110011".U){
++    when(funct3 === "b000".U){
++      when(funct7 === "b0000000".U){
++        io.uop := isADD
++        io.wrEN := true.B
++        isInvalid := false.B
++      }.elsewhen(funct7 === "b0100000".U){
++        io.uop := isSUB
++        io.wrEN := true.B
++        isInvalid := false.B
++      }
++    }.elsewhen(funct3 === "b100".U){
++      when(funct7 === "b0000000".U){
++        io.uop := isXOR
++        io.wrEN := true.B
++        isInvalid := false.B
++      }
++    }.elsewhen(funct3 === "b110".U){
++      when(funct7 === "b0000000".U){
++        io.uop := isOR
++        io.wrEN := true.B
++        isInvalid := false.B
++      }
++    }.elsewhen(funct3 === "b111".U){
++      when(funct7 === "b0000000".U){
++        io.uop := isAND
++        io.wrEN := true.B
++        isInvalid := false.B
++      }
++    }.elsewhen(funct3 === "b001".U){
++      when(funct7 === "b0000000".U){
++        io.uop := isSLL
++        io.wrEN := true.B
++        isInvalid := false.B
++      }
++    }.elsewhen(funct3 === "b101".U){
++      when(funct7 === "b0000000".U){
++        io.uop := isSRL
++        io.wrEN := true.B
++        isInvalid := false.B
++      }.elsewhen(funct7 === "b0100000".U){
++        io.uop := isSRA
++        io.wrEN := true.B
++        isInvalid := false.B
++      }
++    }.elsewhen(funct3 === "b010".U){
++      when(funct7 === "b0000000".U){
++        io.uop := isSLT
++        io.wrEN := true.B
++        isInvalid := false.B
++      }
++    }.elsewhen(funct3 === "b011".U){
++      when(funct7 === "b0000000".U){
++        io.uop := isSLTU
++        io.wrEN := true.B
++        isInvalid := false.B
++      }
++    }
++  }.elsewhen(opcode === "b0010011".U){
++    when(funct3 === "b000".U){
++      io.uop := isADDI
++      io.wrEN := true.B
++      isInvalid := false.B
++    }.elsewhen(funct3 === "b100".U){
++      io.uop := isXORI
++      io.wrEN := true.B
++      isInvalid := false.B
++    }.elsewhen(funct3 === "b110".U){
++      io.uop := isORI
++      io.wrEN := true.B
++      isInvalid := false.B
++    }.elsewhen(funct3 === "b111".U){
++      io.uop := isANDI
++      io.wrEN := true.B
++      isInvalid := false.B
++    }.elsewhen(funct3 === "b010".U){
++      io.uop := isSLTI
++      io.wrEN := true.B
++      isInvalid := false.B
++    }.elsewhen(funct3 === "b011".U){
++      io.uop := isSLTIU
++      io.wrEN := true.B
++      isInvalid := false.B
++    }.elsewhen(funct3 === "b001".U){
++      when(funct7 === "b0000000".U){
++        io.uop := isSLLI
++        io.wrEN := true.B
++        isInvalid := false.B
++      }
++    }.elsewhen(funct3 === "b101".U){
++      when(funct7 === "b0000000".U){
++        io.uop := isSRLI
++        io.wrEN := true.B
++        isInvalid := false.B
++      }.elsewhen(funct7 === "b0100000".U){
++        io.uop := isSRAI
++        io.wrEN := true.B
++        isInvalid := false.B
++      }
++    }
++  }.elsewhen(opcode === "b1100011".U){
++    when(funct3 === "b000".U){
++      io.uop := isBEQ
++      isInvalid := false.B
++    }.elsewhen(funct3 === "b001".U){
++      io.uop := isBNE
++      isInvalid := false.B
++    }.elsewhen(funct3 === "b100".U){
++      io.uop := isBLT
++      isInvalid := false.B
++    }.elsewhen(funct3 === "b101".U){
++      io.uop := isBGE
++      isInvalid := false.B
++    }.elsewhen(funct3 === "b110".U){
++      io.uop := isBLTU
++      isInvalid := false.B
++    }.elsewhen(funct3 === "b111".U){
++      io.uop := isBGEU
++      isInvalid := false.B
++    }
++  }.elsewhen(opcode === "b1101111".U){
++    io.uop := isJAL
++    io.wrEN := true.B
++    isInvalid := false.B
++  }.elsewhen(opcode === "b1100111".U){
++    when(funct3 === "b000".U){
++      io.uop := isJALR
++      io.wrEN := true.B
++      isInvalid := false.B
++    }
++  }
++
++  io.XcptInvalid := isInvalid
++
++  // Operands
++  io.regFileReq_A.addr := rs1
++  io.regFileReq_B.addr := rs2
++
++  // Control Signals for Forwarding Unit
++  io.rs1 := rs1
++  io.rs2 := rs2
++
++  io.operandA := io.regFileResp_A.data
++  io.operandB := Mux(opcode === "b0110011".U || opcode === "b1100011".U, io.regFileResp_B.data,
++    Mux(opcode === "b0010011".U, immI, 0.U))
++  io.imm := MuxLookup(opcode, 0.U(32.W), Array(
++    "b0010011".U -> immI,
++    "b1100111".U -> immI,
++    "b1100011".U -> immB,
++    "b1101111".U -> immJ
++  ))
++  
++}
+diff -ru /import/lab/users/sanchez/Desktop/ADSProject/05_branch_instructions/src/main/scala/IFbarrier.scala /import/lab/users/sanchez/Desktop/ADSProject_Master/05_branch_instructions/src/main/scala/IFbarrier.scala
+--- /import/lab/users/sanchez/Desktop/ADSProject/05_branch_instructions/src/main/scala/IFbarrier.scala	2026-06-19 10:57:23.000000000 +0200
++++ /import/lab/users/sanchez/Desktop/ADSProject_Master/05_branch_instructions/src/main/scala/IFbarrier.scala	2026-06-24 15:48:23.000000000 +0200
+@@ -30,9 +30,26 @@
+ 
+ class IFBarrier extends Module {
+   val io = IO(new Bundle {
+-    //ToDo: Add I/O ports
++    val inInstr  = Input(UInt(32.W))
++    val inPC     = Input(UInt(32.W))
++    val flush    = Input(Bool())
++    val outInstr = Output(UInt(32.W))
++    val outPC    = Output(UInt(32.W))
+   })
+ 
+-//ToDo: Add your implementation according to the specification above here 
++  val nopInstr = "h00000013".U(32.W)
++  val instrReg = RegInit(nopInstr)
++  val pcReg    = RegInit(0.U(32.W))
++
++  io.outInstr := instrReg
++  io.outPC    := pcReg
++
++  when(io.flush) {
++    instrReg := nopInstr
++    pcReg    := 0.U
++  }.otherwise {
++    instrReg := io.inInstr
++    pcReg    := io.inPC
++  }
+ 
+ }
+diff -ru /import/lab/users/sanchez/Desktop/ADSProject/05_branch_instructions/src/main/scala/IFstage.scala /import/lab/users/sanchez/Desktop/ADSProject_Master/05_branch_instructions/src/main/scala/IFstage.scala
+--- /import/lab/users/sanchez/Desktop/ADSProject/05_branch_instructions/src/main/scala/IFstage.scala	2026-06-19 10:57:23.000000000 +0200
++++ /import/lab/users/sanchez/Desktop/ADSProject_Master/05_branch_instructions/src/main/scala/IFstage.scala	2026-06-24 15:48:23.000000000 +0200
+@@ -19,7 +19,6 @@
+ Functionality:
+     Fetch the instruction at the current PC (word-aligned addressing)
+     Increment the PC (word-aligned) each clock cycle to fetch the next sequential instruction
+-    Handle flushes due to mispredicted branches
+ 
+ Parameters:
+     BinaryFile: String - path to the binary file to load into instruction memory
+@@ -42,9 +41,21 @@
+ 
+ class IF (BinaryFile: String) extends Module {
+   val io = IO(new Bundle {
+-    // ToDo: Add I/O ports
++    val redirect   = Input(Bool())
++    val redirectPC = Input(UInt(32.W))
++    val instr      = Output(UInt(32.W))
++    val pc         = Output(UInt(32.W))
+   })
+ 
+-//ToDo: Add your implementation according to the specification above here 
++  val IMem = Mem(4096, UInt(32.W))
++  loadMemoryFromFile(IMem, BinaryFile)
++
++  val PC = RegInit(0.U(32.W))
++  
++  io.instr := IMem(PC>>2.U)
++  io.pc    := PC
++
++  // Update PC
++  PC := Mux(io.redirect, io.redirectPC, PC + 4.U)
+   
+ }
+diff -ru /import/lab/users/sanchez/Desktop/ADSProject/05_branch_instructions/src/main/scala/MEMbarrier.scala /import/lab/users/sanchez/Desktop/ADSProject_Master/05_branch_instructions/src/main/scala/MEMbarrier.scala
+--- /import/lab/users/sanchez/Desktop/ADSProject/05_branch_instructions/src/main/scala/MEMbarrier.scala	2026-06-19 10:57:23.000000000 +0200
++++ /import/lab/users/sanchez/Desktop/ADSProject_Master/05_branch_instructions/src/main/scala/MEMbarrier.scala	2026-06-24 15:48:23.000000000 +0200
+@@ -34,4 +34,33 @@
+ // MEM-Barrier
+ // -----------------------------------------
+ 
+-//ToDo: Add your implementation according to the specification above here 
++class MEMBarrier extends Module {
++  val io = IO(new Bundle {
++    val inAluResult  = Input(UInt(32.W))
++    val outAluResult = Output(UInt(32.W))
++    val inRD           = Input(UInt(5.W))
++    val outRD          = Output(UInt(5.W))
++    val inWrEn         = Input(Bool())
++    val outWrEn        = Output(Bool())
++    val inXcptInvalid  = Input(Bool())
++    val outXcptInvalid = Output(Bool())
++  })
++
++  val aluResult   = RegInit(0.U(32.W))
++  val rd          = RegInit(0.U(5.W))
++  val wrEN        = RegInit(false.B)
++  val XcptInvalid = RegInit(false.B)
++
++  io.outAluResult := aluResult
++  aluResult       := io.inAluResult
++
++  io.outRD := rd
++  rd := io.inRD
++
++  io.outWrEn := wrEN
++  wrEN := io.inWrEn
++
++  io.outXcptInvalid := XcptInvalid
++  XcptInvalid := io.inXcptInvalid
++
++}
+diff -ru /import/lab/users/sanchez/Desktop/ADSProject/05_branch_instructions/src/main/scala/MEMstage.scala /import/lab/users/sanchez/Desktop/ADSProject_Master/05_branch_instructions/src/main/scala/MEMstage.scala
+--- /import/lab/users/sanchez/Desktop/ADSProject/05_branch_instructions/src/main/scala/MEMstage.scala	2026-06-19 10:57:23.000000000 +0200
++++ /import/lab/users/sanchez/Desktop/ADSProject_Master/05_branch_instructions/src/main/scala/MEMstage.scala	2026-06-24 15:48:23.000000000 +0200
+@@ -29,6 +29,6 @@
+ 
+   })
+ 
+-  // No memory operations implemented in Assignment03, nothing to do here! :)
++  // No memory operations implemented in Assignment03
+ 
+ }
+diff -ru /import/lab/users/sanchez/Desktop/ADSProject/05_branch_instructions/src/main/scala/RegisterFile.scala /import/lab/users/sanchez/Desktop/ADSProject_Master/05_branch_instructions/src/main/scala/RegisterFile.scala
+--- /import/lab/users/sanchez/Desktop/ADSProject/05_branch_instructions/src/main/scala/RegisterFile.scala	2026-06-19 10:57:23.000000000 +0200
++++ /import/lab/users/sanchez/Desktop/ADSProject_Master/05_branch_instructions/src/main/scala/RegisterFile.scala	2026-06-24 15:48:23.000000000 +0200
+@@ -29,10 +29,6 @@
+ Functionality:
+     Two read ports allow simultaneous reading of two operands
+     Synchronous write updates register if wr_en is asserted
+-
+-
+-Special Case for hazard resolution:    
+-    If a register is read and written in the same clock cycle, send the new data to data output!
+ */
+ 
+ // -----------------------------------------
+@@ -40,22 +36,40 @@
+ // -----------------------------------------
+ 
+ class regFileReadReq extends Bundle {
+-    //ToDo: implement bundle for read request
++    val addr  = Input(UInt(5.W))
+ }
+ 
+ class regFileReadResp extends Bundle {
+-    //ToDo: implement bundle for read response
++    val data  = Output(UInt(32.W))
+ }
+ 
+ class regFileWriteReq extends Bundle {
+-    //ToDo: implement bundle for write request
++    val addr  = Input(UInt(5.W))
++    val data  = Input(UInt(32.W))
++    val wr_en = Input(Bool())
+ }
+ 
+ class regFile extends Module {
+   val io = IO(new Bundle {
+-    //ToDo: Add I/O ports 
++    val req_1  = new regFileReadReq
++    val resp_1 = new regFileReadResp
++    val req_2  = new regFileReadReq
++    val resp_2 = new regFileReadResp
++    val req_3  = new regFileWriteReq
+ })
+ 
+-//ToDo: Add your implementation according to the specification above here 
++  val regFile = Mem(32, UInt(32.W))
++  regFile(0) := 0.U                           // hard-wired zero for x0
++
++  when(io.req_3.wr_en){
++    when(io.req_3.addr =/= 0.U){
++      regFile(io.req_3.addr) := io.req_3.data
++    }
++  }
++
++  io.resp_1.data := Mux(io.req_1.addr === 0.U, 0.U,
++    Mux(io.req_3.wr_en && io.req_1.addr === io.req_3.addr, io.req_3.data, regFile(io.req_1.addr)))
++  io.resp_2.data := Mux(io.req_2.addr === 0.U, 0.U,
++    Mux(io.req_3.wr_en && io.req_2.addr === io.req_3.addr, io.req_3.data, regFile(io.req_2.addr)))
+ 
+ }
+diff -ru /import/lab/users/sanchez/Desktop/ADSProject/05_branch_instructions/src/main/scala/WBbarrier.scala /import/lab/users/sanchez/Desktop/ADSProject_Master/05_branch_instructions/src/main/scala/WBbarrier.scala
+--- /import/lab/users/sanchez/Desktop/ADSProject/05_branch_instructions/src/main/scala/WBbarrier.scala	2026-06-19 10:57:23.000000000 +0200
++++ /import/lab/users/sanchez/Desktop/ADSProject_Master/05_branch_instructions/src/main/scala/WBbarrier.scala	2026-06-24 15:48:23.000000000 +0200
+@@ -32,4 +32,20 @@
+ // WB-Barrier
+ // -----------------------------------------
+ 
+-//ToDo: Add your implementation according to the specification above here 
++class WBBarrier extends Module {
++  val io = IO(new Bundle {
++    val inCheckRes    = Input(UInt(32.W))
++    val outCheckRes   = Output(UInt(32.W))
++    val inXcptInvalid = Input(Bool())
++    val outXcptInvalid  = Output(Bool())
++  })
++
++  val check_res   = RegInit(0.U(32.W))
++  val XcptInvalid = RegInit(false.B)
++
++  io.outCheckRes := check_res
++  check_res      := io.inCheckRes
++
++  io.outXcptInvalid := XcptInvalid
++  XcptInvalid := io.inXcptInvalid
++}
+diff -ru /import/lab/users/sanchez/Desktop/ADSProject/05_branch_instructions/src/main/scala/WBstage.scala /import/lab/users/sanchez/Desktop/ADSProject_Master/05_branch_instructions/src/main/scala/WBstage.scala
+--- /import/lab/users/sanchez/Desktop/ADSProject/05_branch_instructions/src/main/scala/WBstage.scala	2026-06-19 10:57:23.000000000 +0200
++++ /import/lab/users/sanchez/Desktop/ADSProject_Master/05_branch_instructions/src/main/scala/WBstage.scala	2026-06-24 15:48:23.000000000 +0200
+@@ -40,4 +40,19 @@
+ // Writeback Stage
+ // -----------------------------------------
+ 
+-//ToDo: Add your implementation according to the specification above here 
++class WB extends Module {
++  val io = IO(new Bundle {
++    val regFileReq = Flipped(new regFileWriteReq) 
++    val rd         = Input(UInt(5.W))
++    val wrEN       = Input(Bool())
++    val aluResult  = Input(UInt(32.W))
++    val check_res  = Output(UInt(32.W))
++  })
++
++ io.regFileReq.addr  := io.rd
++ io.regFileReq.data  := io.aluResult
++ io.regFileReq.wr_en := io.wrEN
++
++ io.check_res := io.aluResult
++
++}

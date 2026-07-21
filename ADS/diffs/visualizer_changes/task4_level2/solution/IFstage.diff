@@ -1,0 +1,18 @@
+--- /import/lab/users/sanchez/Desktop/ADSProject_Master/04_forwarding_unit/src/main/scala/IFstage.scala	2026-06-24 15:48:23.000000000 +0200
++++ course_material/task4_level2/solution/src/main/scala/IFstage.scala	2026-07-01 18:16:46.542264794 +0200
+@@ -42,6 +42,7 @@
+ class IF (BinaryFile: String) extends Module {
+   val io = IO(new Bundle {
+     val instr = Output(UInt(32.W))
++    val pc    = Output(UInt(32.W))
+   })
+ 
+   val IMem = Mem(4096, UInt(32.W))
+@@ -50,6 +51,7 @@
+   val PC = RegInit(0.U(32.W))
+   
+   io.instr := IMem(PC>>2.U)
++  io.pc    := PC
+ 
+   // Update PC
+   // no jumps or branches, next PC always reads next address from IMEM

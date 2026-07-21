@@ -1,0 +1,20 @@
+--- /import/lab/users/sanchez/Desktop/ADSProject_Master/03_RV32I-pipeline/src/main/scala/IFbarrier.scala	2026-06-24 15:48:23.000000000 +0200
++++ course_material/task3_level1/solution/src/main/scala/IFbarrier.scala	2026-06-28 14:14:49.733864708 +0200
+@@ -31,12 +31,17 @@
+ class IFBarrier extends Module {
+   val io = IO(new Bundle {
+     val inInstr  = Input(UInt(32.W))
++    val inPC     = Input(UInt(32.W))
+     val outInstr = Output(UInt(32.W))
++    val outPC    = Output(UInt(32.W))
+   })
+ 
+   val instrReg = RegInit(0.U(32.W))
++  val pcReg    = RegInit(0.U(32.W))
+ 
+   io.outInstr := instrReg
+   instrReg    := io.inInstr
++  io.outPC    := pcReg
++  pcReg       := io.inPC
+ 
+ }

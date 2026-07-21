@@ -1,0 +1,36 @@
+--- /import/lab/users/sanchez/Desktop/ADSProject_Master/05_branch_instructions/src/main/scala/IDbarrier.scala	2026-06-24 15:48:23.000000000 +0200
++++ course_material/task5_level3_branch/solution/src/main/scala/IDbarrier.scala	2026-07-05 14:03:27.510692706 +0200
+@@ -42,6 +42,7 @@
+ class IDBarrier extends Module {
+   val io = IO(new Bundle {
+     val inUOP          = Input(uopc())
++    val inInstr        = Input(UInt(32.W))
+     val inRS1          = Input(UInt(5.W))          
+     val inRS2          = Input(UInt(5.W))
+     val inRD           = Input(UInt(5.W))
+@@ -53,6 +54,7 @@
+     val inXcptInvalid  = Input(Bool())
+     val flush          = Input(Bool())
+     val outUOP         = Output(uopc())
++    val outInstr       = Output(UInt(32.W))
+     val outRS1         = Output(UInt(5.W))          
+     val outRS2         = Output(UInt(5.W))
+     val outRD          = Output(UInt(5.W))
+@@ -65,6 +67,7 @@
+   })
+ 
+   val uop         = RegInit(isNOP)
++  val instr       = RegInit(0.U(32.W))
+   val rs1         = RegInit(0.U(5.W))
+   val rs2         = RegInit(0.U(5.W))
+   val rd          = RegInit(0.U(5.W))
+@@ -78,6 +81,9 @@
+   io.outUOP := uop
+   uop := Mux(io.flush, isNOP, io.inUOP)
+ 
++  io.outInstr := instr
++  instr := Mux(io.flush, "h00000013".U(32.W), io.inInstr)
++
+   io.outRS1 := rs1
+   rs1 := Mux(io.flush, 0.U, io.inRS1)
+ 

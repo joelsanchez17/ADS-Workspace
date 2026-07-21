@@ -1,0 +1,152 @@
+diff --git a/infrastructure_template/system_tests/level_3/BinaryFile b/infrastructure_template/system_tests/level_3/BinaryFile
+index 05dadd4..226dcb6 100644
+--- a/infrastructure_template/system_tests/level_3/BinaryFile
++++ b/infrastructure_template/system_tests/level_3/BinaryFile
+@@ -1,8 +1,16 @@
+-06400093
+-02a00113
+-0020a023
+-0000a183
+-00218233
+-00000013
+-00000013
+-00100073
+\ No newline at end of file
++00500093
++00500113
++00700193
++00308663
++00100213
++00208663
++06300293
++06200313
++00200393
++00209463
++00300413
++00309663
++06100493
++06000513
++00400593
++00100073
+diff --git a/web_visualizer/server.py b/web_visualizer/server.py
+index 2ef326d..8f2094c 100644
+--- a/web_visualizer/server.py
++++ b/web_visualizer/server.py
+@@ -66,6 +66,24 @@ LEVEL_MARKER_FILES = {
+     "Branch.scala",
+ }
+ 
++TASK5_BRANCH_MARKERS = {
++    "isBEQ",
++    "isBNE",
++    "isBLT",
++    "isBGE",
++    "isBLTU",
++    "isBGEU",
++    "isJAL",
++    "isJALR",
++    "redirectPC",
++    "redirect",
++    "immB",
++    "immJ",
++    "branch target calculation",
++    "branchTarget",
++    "mispredicted branches",
++}
++
+ IGNORED_UPLOAD_PREFIXES = ("target/", "project/", "generated-src/")
+ SESSION_ID_RE = re.compile(r"^sess_[A-Za-z0-9_-]{1,64}$")
+ 
+@@ -234,15 +252,21 @@ def classify_compile_failure(log_output: str) -> str:
+     if ".dbg" in log_output or "value dbg" in lowered:
+         return "Top-level IO is missing io.dbg.* required by the web visualizer."
+     if "not found: object assignment02" in lowered or "not found: object uopc" in lowered:
+-        return "Task 3/4 TODO files are incomplete. Finish common.scala/ALU.scala and dependent modules."
++        return "Task 3/4/5 TODO files are incomplete. Finish common.scala/ALU.scala and dependent modules."
+     return "See SBT logs above for the first Scala/Chisel error."
+ 
++def task5_branch_markers(scala_files: Dict[str, str]) -> set:
++    haystack = "\n".join(scala_files.values())
++    return {marker for marker in TASK5_BRANCH_MARKERS if marker in haystack}
++
+ def detect_level_from_scala_files(scala_files: Dict[str, str]) -> int:
+     basenames = {os.path.basename(path) for path in scala_files.keys()}
+     if "Branch.scala" in basenames:
+         return 4
+-    if "HazardDetection.scala" in basenames or "MemController.scala" in basenames:
++    if task5_branch_markers(scala_files):
+         return 3
++    if "HazardDetection.scala" in basenames or "MemController.scala" in basenames:
++        return 4
+     if "ForwardingUnit.scala" in basenames:
+         return 2
+     return 1
+@@ -250,14 +274,18 @@ def detect_level_from_scala_files(scala_files: Dict[str, str]) -> int:
+ def level_detection_reason(scala_files: Dict[str, str], level: int) -> str:
+     basenames = {os.path.basename(path) for path in scala_files.keys()}
+     if level == 1:
+-        return "Detected Task 3 / Level 1 because no ForwardingUnit/HazardDetection/MemController/Branch file was found."
++        return "Detected Task 3 / Level 1 because no ForwardingUnit/HazardDetection/MemController/Branch file or Task 5 branch markers were found."
+     if level == 2:
+-        return "Detected Level 2 because ForwardingUnit.scala was found."
++        return "Detected Task 4 / Level 2 because ForwardingUnit.scala was found and no Task 5 branch markers were present."
+     if level == 3:
+-        found = sorted(basenames.intersection({"HazardDetection.scala", "MemController.scala"}))
+-        return f"Detected Level 3 because {', '.join(found)} was found."
++        found = sorted(task5_branch_markers(scala_files))
++        preview = ", ".join(found[:6])
++        if len(found) > 6:
++            preview += ", ..."
++        return f"Detected Task 5 / Level 3 because branch/jump markers were found: {preview}."
+     if level == 4:
+-        return "Detected Level 4 because Branch.scala was found."
++        found = sorted(basenames.intersection({"Branch.scala", "HazardDetection.scala", "MemController.scala"}))
++        return f"Detected Level 4 because {', '.join(found)} was found."
+     return f"Detected Level {level}."
+ 
+ @app.get("/")
+@@ -360,7 +388,7 @@ async def upload_and_detect(req: UploadRequest):
+     level = detect_level_from_scala_files(scala_files)
+     detection_reason = level_detection_reason(scala_files, level)
+     basenames = {os.path.basename(path) for path in scala_files}
+-    if level in (1, 2) and "PipelinedRISCV32I.scala" not in basenames:
++    if level in (1, 2, 3) and "PipelinedRISCV32I.scala" not in basenames:
+         return {
+             "status": "error",
+             "message": f"Level {level} upload is missing PipelinedRISCV32I.scala. Upload the complete src folder.",
+@@ -418,12 +446,14 @@ async def compile_code(req: CompileRequest):
+ 
+     detected_level = detect_level_from_scala_files(req.scala_files)
+     effective_level = detected_level
+-    is_course_level = effective_level in (1, 2)
++    is_course_level = effective_level in (1, 2, 3)
+ 
+     if effective_level == 1:
+         template_dir = os.path.join(project_root, "course_material", "task3_level1", "solution")
+     elif effective_level == 2:
+         template_dir = os.path.join(project_root, "course_material", "task4_level2", "solution")
++    elif effective_level == 3:
++        template_dir = os.path.join(project_root, "course_material", "task5_level3_branch", "solution")
+     else:
+         template_dir = os.path.join(project_root, "infrastructure_template")
+ 
+diff --git a/web_visualizer/templates/index.html b/web_visualizer/templates/index.html
+index c4fcbae..b9b0e4f 100644
+--- a/web_visualizer/templates/index.html
++++ b/web_visualizer/templates/index.html
+@@ -1629,7 +1629,7 @@
+         setOpacity('wire-fwd-a', fwdOpacity);
+         setOpacity('wire-fwd-b', fwdOpacity);
+ 
+-        const branchOpacity = (level >= 4) ? '1' : '0';
++        const branchOpacity = (level >= 3) ? '1' : '0';
+         setOpacity('wire-branch', branchOpacity);
+         setOpacity('txt-branch-target', branchOpacity);
+ 
+@@ -1672,4 +1672,4 @@
+     initWorkspace();
+ </script>
+ </body>
+-</html>
+\ No newline at end of file
++</html>

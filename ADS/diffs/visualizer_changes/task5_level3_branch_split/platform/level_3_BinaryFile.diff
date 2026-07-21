@@ -1,0 +1,30 @@
+diff --git a/infrastructure_template/system_tests/level_3/BinaryFile b/infrastructure_template/system_tests/level_3/BinaryFile
+index 05dadd4..226dcb6 100644
+--- a/infrastructure_template/system_tests/level_3/BinaryFile
++++ b/infrastructure_template/system_tests/level_3/BinaryFile
+@@ -1,8 +1,16 @@
+-06400093
+-02a00113
+-0020a023
+-0000a183
+-00218233
+-00000013
+-00000013
+-00100073
+\ No newline at end of file
++00500093
++00500113
++00700193
++00308663
++00100213
++00208663
++06300293
++06200313
++00200393
++00209463
++00300413
++00309663
++06100493
++06000513
++00400593
++00100073

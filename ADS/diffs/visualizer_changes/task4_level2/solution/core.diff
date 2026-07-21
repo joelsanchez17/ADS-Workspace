@@ -1,0 +1,174 @@
+--- /import/lab/users/sanchez/Desktop/ADSProject_Master/04_forwarding_unit/src/main/scala/core.scala	2026-06-24 15:48:23.000000000 +0200
++++ course_material/task4_level2/solution/src/main/scala/core.scala	2026-07-01 18:18:31.139202685 +0200
+@@ -60,6 +60,54 @@
+   val io = IO(new Bundle {
+     val check_res = Output(UInt(32.W))
+     val exception = Output(Bool())
++    val coreDone  = Output(UInt(1.W))
++    val gpRegVal  = Output(UInt(32.W))
++    val dbg = new Bundle {
++      val if_pc    = Output(UInt(32.W)); val if_inst  = Output(UInt(32.W))
++      val id_pc    = Output(UInt(32.W)); val id_inst  = Output(UInt(32.W))
++      val ex_pc    = Output(UInt(32.W)); val ex_inst  = Output(UInt(32.W))
++      val mem_pc   = Output(UInt(32.W)); val mem_inst = Output(UInt(32.W))
++      val wb_pc    = Output(UInt(32.W)); val wb_inst  = Output(UInt(32.W))
++
++      val id_rs1   = Output(UInt(5.W))
++      val id_rs2   = Output(UInt(5.W))
++      val id_rd    = Output(UInt(5.W))
++      val id_we    = Output(UInt(1.W))
++
++      val pc_write = Output(UInt(1.W))
++      val if_stall = Output(UInt(1.W))
++      val id_stall = Output(UInt(1.W))
++      val flush    = Output(UInt(1.W))
++
++      val fwd_a_sel = Output(UInt(8.W))
++      val fwd_b_sel = Output(UInt(8.W))
++
++      val ex_alu_result = Output(UInt(32.W))
++      val ex_alu_op_a   = Output(UInt(32.W))
++      val ex_alu_op_b   = Output(UInt(32.W))
++      val ex_pc_src     = Output(UInt(1.W))
++      val ex_pc_jb      = Output(UInt(32.W))
++      val ex_rd         = Output(UInt(5.W))
++      val ex_we         = Output(UInt(1.W))
++      val ex_mem_rd_op  = Output(UInt(8.W))
++      val ex_mem_wr_op  = Output(UInt(8.W))
++      val ex_mem_to_reg = Output(UInt(1.W))
++
++      val mem_addr    = Output(UInt(32.W))
++      val mem_rd_op   = Output(UInt(8.W))
++      val mem_wr_op   = Output(UInt(8.W))
++      val mem_wdata   = Output(UInt(32.W))
++      val mem_rdata   = Output(UInt(32.W))
++      val mem_rd      = Output(UInt(5.W))
++      val mem_we      = Output(UInt(1.W))
++      val mem_to_reg  = Output(UInt(1.W))
++
++      val wb_rd        = Output(UInt(5.W))
++      val wb_we        = Output(UInt(1.W))
++      val wb_wdata     = Output(UInt(32.W))
++      val wb_check_res = Output(UInt(32.W))
++      val regs         = Output(Vec(32, UInt(32.W)))
++    }
+   })
+ 
+   // Pipeline Registers
+@@ -84,6 +132,7 @@
+ 
+   // Connections for IOs
+   IFBarrier.io.inInstr      := IF.io.instr
++  IFBarrier.io.inPC         := IF.io.pc
+   
+   ID.io.instr               := IFBarrier.io.outInstr
+   ID.io.regFileReq_A        <> regFile.io.req_1
+@@ -92,6 +141,8 @@
+   ID.io.regFileResp_B       <> regFile.io.resp_2
+ 
+   IDBarrier.io.inUOP         := ID.io.uop
++  IDBarrier.io.inInstr       := IFBarrier.io.outInstr
++  IDBarrier.io.inPC          := IFBarrier.io.outPC
+   IDBarrier.io.inRS1         := ID.io.rs1
+   IDBarrier.io.inRS2         := ID.io.rs2
+   IDBarrier.io.inRD          := ID.io.rd
+@@ -110,11 +161,15 @@
+   EX.io.inXcptInvalid        := IDBarrier.io.outXcptInvalid
+ 
+   EXBarrier.io.inRD           := IDBarrier.io.outRD
++  EXBarrier.io.inInstr        := IDBarrier.io.outInstr
++  EXBarrier.io.inPC           := IDBarrier.io.outPC
+   EXBarrier.io.inWrEn         := IDBarrier.io.outWrEn
+   EXBarrier.io.inAluResult    := EX.io.aluResult
+   EXBarrier.io.inXcptInvalid  := EX.io.outXcptInvalid
+ 
+   MEMBarrier.io.inRD          := EXBarrier.io.outRD
++  MEMBarrier.io.inInstr       := EXBarrier.io.outInstr
++  MEMBarrier.io.inPC          := EXBarrier.io.outPC
+   MEMBarrier.io.inAluResult   := EXBarrier.io.outAluResult
+   MEMBarrier.io.inWrEn        := EXBarrier.io.outWrEn
+   MEMBarrier.io.inXcptInvalid := EXBarrier.io.outXcptInvalid
+@@ -125,6 +180,8 @@
+   WB.io.regFileReq          <> regFile.io.req_3
+ 
+   WBBarrier.io.inCheckRes    := WB.io.check_res
++  WBBarrier.io.inInstr       := MEMBarrier.io.outInstr
++  WBBarrier.io.inPC          := MEMBarrier.io.outPC
+   WBBarrier.io.inXcptInvalid := MEMBarrier.io.outXcptInvalid
+ 
+   ForwardingUnit.io.rs1_EX   := IDBarrier.io.outRS1
+@@ -134,7 +191,74 @@
+   ForwardingUnit.io.wrEn_MEM := EXBarrier.io.outWrEn
+   ForwardingUnit.io.wrEn_WB  := MEMBarrier.io.outWrEn
+ 
++  def fwdDebugSel(native: UInt): UInt = {
++    Mux(native === "b10".U, 1.U, Mux(native === "b01".U, 2.U, 0.U))
++  }
++
++  val dbgExOperandA = MuxLookup(ForwardingUnit.io.forwardA, IDBarrier.io.outOperandA, Array(
++    "b01".U -> MEMBarrier.io.outAluResult,
++    "b10".U -> EXBarrier.io.outAluResult
++  ))
++  val dbgExOperandB = MuxLookup(ForwardingUnit.io.forwardB, IDBarrier.io.outOperandB, Array(
++    "b01".U -> MEMBarrier.io.outAluResult,
++    "b10".U -> EXBarrier.io.outAluResult
++  ))
++
+   io.check_res               := WBBarrier.io.outCheckRes
+   io.exception               := WBBarrier.io.outXcptInvalid
++  io.coreDone                := IF.io.instr(6, 0) === "b1110011".U
++  io.gpRegVal                := regFile.io.gpRegVal
++
++  io.dbg.if_pc   := IF.io.pc
++  io.dbg.if_inst := IF.io.instr
++  io.dbg.id_pc   := IFBarrier.io.outPC
++  io.dbg.id_inst := IFBarrier.io.outInstr
++  io.dbg.ex_pc   := IDBarrier.io.outPC
++  io.dbg.ex_inst := IDBarrier.io.outInstr
++  io.dbg.mem_pc  := EXBarrier.io.outPC
++  io.dbg.mem_inst:= EXBarrier.io.outInstr
++  io.dbg.wb_pc   := MEMBarrier.io.outPC
++  io.dbg.wb_inst := MEMBarrier.io.outInstr
++
++  io.dbg.id_rs1 := ID.io.rs1
++  io.dbg.id_rs2 := ID.io.rs2
++  io.dbg.id_rd  := ID.io.rd
++  io.dbg.id_we  := (ID.io.wrEN && ID.io.rd =/= 0.U).asUInt
++
++  io.dbg.pc_write := 1.U
++  io.dbg.if_stall := 0.U
++  io.dbg.id_stall := 0.U
++  io.dbg.flush    := 0.U
++
++  // ForwardingUnit uses native encoding 2=MEM and 1=WB. The web visualizer
++  // expects 1=MEM and 2=WB, so only the debug output is remapped here.
++  io.dbg.fwd_a_sel := fwdDebugSel(ForwardingUnit.io.forwardA)
++  io.dbg.fwd_b_sel := fwdDebugSel(ForwardingUnit.io.forwardB)
++
++  io.dbg.ex_alu_result := EX.io.aluResult
++  io.dbg.ex_alu_op_a   := dbgExOperandA
++  io.dbg.ex_alu_op_b   := dbgExOperandB
++  io.dbg.ex_pc_src     := 0.U
++  io.dbg.ex_pc_jb      := 0.U
++  io.dbg.ex_rd         := IDBarrier.io.outRD
++  io.dbg.ex_we         := (IDBarrier.io.outWrEn && IDBarrier.io.outRD =/= 0.U).asUInt
++  io.dbg.ex_mem_rd_op  := 0.U
++  io.dbg.ex_mem_wr_op  := 0.U
++  io.dbg.ex_mem_to_reg := 0.U
++
++  io.dbg.mem_addr   := 0.U
++  io.dbg.mem_rd_op  := 0.U
++  io.dbg.mem_wr_op  := 0.U
++  io.dbg.mem_wdata  := 0.U
++  io.dbg.mem_rdata  := 0.U
++  io.dbg.mem_rd     := EXBarrier.io.outRD
++  io.dbg.mem_we     := 0.U
++  io.dbg.mem_to_reg := 0.U
++
++  io.dbg.wb_rd        := WB.io.rd
++  io.dbg.wb_we        := (MEMBarrier.io.outWrEn && MEMBarrier.io.outRD =/= 0.U).asUInt
++  io.dbg.wb_wdata     := WB.io.regFileReq.data
++  io.dbg.wb_check_res := WB.io.check_res
++  io.dbg.regs         := regFile.io.debug_regs
+ 
+ }
