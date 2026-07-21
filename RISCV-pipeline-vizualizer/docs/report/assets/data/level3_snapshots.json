@@ -3,7 +3,7 @@
     "level": 3,
     "session_id": "sess_validation_l3",
     "detected_level": 3,
-    "detection_message": "Detected Task 5 / Level 3 because branch/jump markers were found: immB, immJ, isBEQ, isBGE, isBGEU, isBLT, ....",
+    "detection_message": "Detected Level 3 \u2014 Branches and jumps (Task 5): branch/jump markers were found: immB, immJ, isBEQ, isBGE, isBGEU, isBLT, ....",
     "cycles_observed": 15,
     "termination_observed": true,
     "forwarding_cycles": 1,

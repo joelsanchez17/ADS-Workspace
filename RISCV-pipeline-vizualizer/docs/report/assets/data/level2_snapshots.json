@@ -3,7 +3,7 @@
     "level": 2,
     "session_id": "sess_validation_l2",
     "detected_level": 2,
-    "detection_message": "Detected Task 4 / Level 2 because ForwardingUnit.scala was found and no Task 5 branch markers were present.",
+    "detection_message": "Detected Level 2 \u2014 Data forwarding (Task 4): ForwardingUnit.scala was found without branch/jump markers.",
     "cycles_observed": 12,
     "termination_observed": true,
     "forwarding_cycles": 10,

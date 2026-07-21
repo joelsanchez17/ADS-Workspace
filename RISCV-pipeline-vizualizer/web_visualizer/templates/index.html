@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>RISC-V Cloud IDE</title>
+    <title>RISC-V Pipeline Visualizer</title>
     <link rel="stylesheet" href="/static/style.css">
     <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
     <script>
@@ -646,13 +646,13 @@
                 <div class="workflow-card">
                     <div class="workflow-step">Step 02</div>
                     <h3>Automatic level detection</h3>
-                    <p>The backend detects whether your design is basic, forwarding-enabled, memory-ready, or control-flow capable.</p>
+                    <p>The backend identifies the arithmetic, forwarding, branch/jump, or integrated memory-and-hazard level.</p>
                 </div>
 
                 <div class="workflow-card">
                     <div class="workflow-step">Step 03</div>
                     <h3>Compile and simulate</h3>
-                    <p>Your uploaded design is compiled with the appropriate BinaryFile and live Chisel testbench.</p>
+                    <p>Your uploaded design is compiled with the selected BinaryFile and the controlled live Chisel testbench.</p>
                 </div>
 
                 <div class="workflow-card">
@@ -705,10 +705,10 @@
 
             <div class="landing-meta">
                 <div class="level-strip">
-                    <div class="level-pill"><strong>Level 1</strong>Basic ALU</div>
-                    <div class="level-pill"><strong>Level 2</strong>Forwarding</div>
-                    <div class="level-pill"><strong>Level 3</strong>Memory</div>
-                    <div class="level-pill"><strong>Level 4</strong>Branches</div>
+                    <div class="level-pill"><strong>Level 1</strong>Basic arithmetic pipeline</div>
+                    <div class="level-pill"><strong>Level 2</strong>Data forwarding</div>
+                    <div class="level-pill"><strong>Level 3</strong>Branches and jumps</div>
+                    <div class="level-pill"><strong>Level 4</strong>Integrated memory and hazard handling</div>
                 </div>
 
                 <div class="requirements">
@@ -717,7 +717,8 @@
                         <li>Upload the project <strong>src</strong> folder, not the full repository.</li>
                         <li>Keep hardware modules inside <strong>src/main/scala</strong>.</li>
                         <li>Student test files are ignored for safety and consistency.</li>
-                        <li>You can use the system testbench or your own BinaryFile after upload.</li>
+                        <li>Select the system BinaryFile or a custom hexadecimal machine-code program after upload.</li>
+                        <li>BinaryFile format: one 32-bit hexadecimal instruction word per line.</li>
                     </ul>
                 </div>
             </div>
@@ -743,8 +744,8 @@
         <div style="display: flex; align-items: center; background: var(--bg-darker); border: 1px solid var(--border); border-radius: 3px; padding: 2px; margin-right: 15px;">
             <span style="font-size: 10px; color: var(--text-muted); font-weight: bold; text-transform: uppercase; padding: 0 8px;">Run Test:</span>
             <select id="asm-selector" class="btn" style="background: var(--bg-panel); border: none; color: var(--success); font-weight: bold;">
-                <option value="system">System Testbench</option>
-                <option value="student">My Custom Assembly</option>
+                <option value="system">System BinaryFile</option>
+                <option value="student">Custom BinaryFile</option>
             </select>
         </div>
 
@@ -763,7 +764,7 @@
             <div class="tree-item indent-1" id="tree-alu" onclick="switchTab('ALU.scala')"><span class="icon">•</span> ALU.scala</div>
 
             <div class="tree-item" style="margin-top: 15px;"><span class="icon">▸</span> programs</div>
-            <div class="tree-item indent-1" id="tree-asm" onclick="switchTab('test_prog.s')"><span class="icon">•</span> test_prog.s</div>
+            <div class="tree-item indent-1" id="tree-asm" onclick="switchTab('BinaryFile')"><span class="icon">•</span> BinaryFile</div>
         </div>
     </div>
 
@@ -800,7 +801,6 @@
                     <div class="panel-header">Display Toggles</div>
                     <div class="toggles-container">
                         <label><input type="checkbox" id="chk-haz" checked> Show Hazards</label>
-                        <label><input type="checkbox" id="chk-path" checked> Datapath</label>
                     </div>
                     <div class="panel-header">Register Memory Bank</div>
                     <div class="reg-grid-container">
@@ -1468,13 +1468,10 @@
                 if (name.endsWith('.scala')) scalaFiles[name] = content;
             }
 
-            const currentLevel = window.currentMissionLevel;
-
             const payload = {
                 scala_files: scalaFiles,
                 asm_code: codes['src/test/programs/BinaryFile'] || "",
-                session_id: window.currentSessionId,
-                level: currentLevel
+                session_id: window.currentSessionId
             };
 
             const response = await fetch('/compile', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
@@ -1499,7 +1496,7 @@
         if (e.key === "ArrowLeft")  sendCommand('back');
     });
 
-    ['chk-haz', 'chk-path'].forEach(id => {
+    ['chk-haz'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.addEventListener('change', () => { if (lastPacket) updateSVG(lastPacket.enriched); });
     });
@@ -1570,7 +1567,7 @@
                 renderFileExplorer(data.level);
 
                 appendTerminal(`[success] Auto-detected Level ${data.level} Architecture!`);
-                appendTerminal(`[info] Loaded System Testbench for Level ${data.level}.`);
+                appendTerminal(`[info] Loaded the system BinaryFile for Level ${data.level}.`);
             } else {
                 alert("Upload failed: " + data.message);
             }
@@ -1605,7 +1602,7 @@
             if (currentFile === 'src/test/programs/BinaryFile' && editor) {
                 editor.setValue(codes['src/test/programs/BinaryFile']);
             }
-            appendTerminal(`[info] Switched testbench to: ${e.target.value}`);
+            appendTerminal(`[info] Switched instruction program to: ${e.target.value}`);
         });
     }
 

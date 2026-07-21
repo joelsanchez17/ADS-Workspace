@@ -9,7 +9,6 @@ from live_debug.decoder import decode_rv32i
 import os
 import shutil
 import uuid
-import subprocess
 import socket
 import asyncio
 import re
@@ -60,7 +59,7 @@ async def get_vcd(session_id: str):
 
     if vcd_path and os.path.exists(vcd_path):
         return FileResponse(vcd_path)
-    return {"error": f"VCD file not found under {test_run_dir}. Compile and simulate first, then open Surfer."}
+    return {"error": "VCD file not found for this session. Compile and simulate first, then open Surfer."}
 
 active_sessions = {}  # Maps session_id -> {"bridge": obj, "history": [], "cursor": 0}
 
@@ -198,6 +197,13 @@ socket_app = socketio.ASGIApp(sio, app, on_shutdown=cleanup_all_sessions)
 def is_safe_session_id(session_id: str) -> bool:
     return bool(SESSION_ID_RE.fullmatch(session_id or ""))
 
+def sanitize_browser_text(value, session_dir: Optional[str] = None) -> str:
+    """Remove host filesystem locations from text returned to the browser."""
+    text = str(value)
+    if session_dir:
+        text = text.replace(session_dir, "[WORKSPACE]")
+    return text.replace(str(PROJECT_ROOT), "[PROJECT_ROOT]")
+
 def normalized_upload_path(filepath: str) -> str:
     clean_path = filepath.replace("\\", "/")
     src_idx = clean_path.find("src/")
@@ -279,18 +285,18 @@ def detect_level_from_scala_files(scala_files: Dict[str, str]) -> int:
 def level_detection_reason(scala_files: Dict[str, str], level: int) -> str:
     basenames = {os.path.basename(path) for path in scala_files.keys()}
     if level == 1:
-        return "Detected Task 3 / Level 1 because no ForwardingUnit/HazardDetection/MemController/Branch file or Task 5 branch markers were found."
+        return "Detected Level 1 — Basic arithmetic pipeline (Task 3): no forwarding, branch/jump, memory, or hazard marker was found."
     if level == 2:
-        return "Detected Task 4 / Level 2 because ForwardingUnit.scala was found and no Task 5 branch markers were present."
+        return "Detected Level 2 — Data forwarding (Task 4): ForwardingUnit.scala was found without branch/jump markers."
     if level == 3:
         found = sorted(task5_branch_markers(scala_files))
         preview = ", ".join(found[:6])
         if len(found) > 6:
             preview += ", ..."
-        return f"Detected Task 5 / Level 3 because branch/jump markers were found: {preview}."
+        return f"Detected Level 3 — Branches and jumps (Task 5): branch/jump markers were found: {preview}."
     if level == 4:
         found = sorted(basenames.intersection({"Branch.scala", "HazardDetection.scala", "MemController.scala"}))
-        return f"Detected Level 4 because {', '.join(found)} was found."
+        return f"Detected Level 4 — Integrated memory and hazard handling: {', '.join(found)} was found."
     return f"Detected Level {level}."
 
 @app.get("/")
@@ -302,45 +308,6 @@ class CompileRequest(BaseModel):
     scala_files: Dict[str, str]
     asm_code: str
     session_id: Optional[str] = None
-    level: int = 1
-
-
-
-@app.get("/workspace")
-async def get_workspace(level: int = 1):  # 🚨 NEW: Accept level from frontend
-    base_dir = os.path.dirname(os.path.abspath(__file__))
-    project_root = os.path.abspath(os.path.join(base_dir, ".."))
-
-    # 🚨 NEW: Point to the specific level folder!
-    level_folder = f"level_{level}"
-    template_dir = os.path.join(project_root, "infrastructure_template", level_folder)
-
-    workspace_data = {"scala": {}, "asm": {}}
-
-    editable_scala_files = [
-        "Branch.scala", "common.scala", "ControlUnit.scala",
-        "ForwardingUnit.scala", "ImmediateGen.scala",
-        "PipelineRegisters.scala", "PipelineStages.scala", "RegFile.scala",
-        "ALU.scala", "HazardDetection.scala"
-    ]
-
-    scala_src_dir = os.path.join(template_dir, "src", "main", "scala")
-    # Read the allowed Scala files (os.path.exists will safely skip files you deleted for this level!)
-    for f_name in editable_scala_files:
-        f_path = os.path.join(scala_src_dir, f_name)
-        if os.path.exists(f_path):
-            with open(f_path, "r") as f:
-                workspace_data["scala"][f_name] = f.read()
-
-    # Read the Assembly/Binary file
-    bin_path = os.path.join(template_dir, "src", "test", "programs", "BinaryFile")
-    if os.path.exists(bin_path):
-        with open(bin_path, "r") as f:
-            workspace_data["asm"]["BinaryFile"] = f.read()
-    else:
-        workspace_data["asm"]["BinaryFile"] = "// No initial assembly found"
-
-    return workspace_data
 
 
 class UploadRequest(BaseModel):
@@ -352,7 +319,7 @@ async def upload_and_detect(req: UploadRequest):
     project_root = os.path.abspath(os.path.join(base_dir, ".."))
 
     scala_files = {}
-    student_asm = "// No custom assembly uploaded"
+    student_asm = "// No custom BinaryFile uploaded"
     ignored_files = []
 
     for filepath, content in req.files.items():
@@ -403,7 +370,7 @@ async def upload_and_detect(req: UploadRequest):
     # 🚨 NEW: Fetch from the new system_tests folder
     system_asm_path = os.path.join(project_root, "infrastructure_template", "system_tests", f"level_{level}", "BinaryFile")
 
-    system_asm = "// System assembly not found"
+    system_asm = "// System BinaryFile not found"
     if os.path.exists(system_asm_path):
         with open(system_asm_path, "r") as f:
             system_asm = f.read()
@@ -547,8 +514,8 @@ async def compile_code(req: CompileRequest):
         env["CHISEL_PORT"] = str(student_port)
 
         await sio.emit('build_log', {'line': f"[info] {detection_reason}"}, room=session_id)
-        await sio.emit('build_log', {'line': f"[info] Session directory: {session_dir}"}, room=session_id)
-        await sio.emit('build_log', {'line': f"[info] System BinaryFile: {system_binary_path}"}, room=session_id)
+        await sio.emit('build_log', {'line': "[info] Session workspace: [WORKSPACE]"}, room=session_id)
+        await sio.emit('build_log', {'line': f"[info] System BinaryFile: infrastructure_template/system_tests/level_{effective_level}/BinaryFile"}, room=session_id)
         await sio.emit('build_log', {'line': f"[info] Scala files written: {', '.join(sorted(os.path.basename(f) for f in written_files))}"}, room=session_id)
 
 
@@ -579,7 +546,7 @@ async def compile_code(req: CompileRequest):
                 # Stream directly to the specific user's room!
                 asyncio.create_task(sio.emit(
                     'build_log',
-                    {'line': line.replace(session_dir, "[WORKSPACE]")},
+                    {'line': sanitize_browser_text(line, session_dir)},
                     room=session_id  # 🚨 NEW: Target the specific room
                 ))
 
@@ -611,20 +578,20 @@ async def compile_code(req: CompileRequest):
                 {'line': f"[error] SBT exited before the Chisel TCP bridge opened. {reason}"},
                 room=session_id
             )
-            return {"status": "error", "message": f"Chisel Compilation Failed before live bridge startup. {reason}", "logs": log_output.replace(session_dir, "[WORKSPACE]")}
+            return {"status": "error", "message": f"Chisel Compilation Failed before live bridge startup. {reason}", "logs": sanitize_browser_text(log_output, session_dir)}
 
         if bridge_connect_task not in done:
             try:
                 await bridge_connect_task
             except Exception as e:
                 await terminate_owned_process(process, f"failed bridge session {session_id}")
-                return {"status": "error", "message": f"Chisel bridge did not open: {str(e)}", "logs": log_output.replace(session_dir, "[WORKSPACE]")}
+                return {"status": "error", "message": f"Chisel bridge did not open: {sanitize_browser_text(e, session_dir)}", "logs": sanitize_browser_text(log_output, session_dir)}
         else:
             try:
                 await bridge_connect_task
             except Exception as e:
                 await terminate_owned_process(process, f"failed bridge session {session_id}")
-                return {"status": "error", "message": f"Chisel bridge did not open: {str(e)}", "logs": log_output.replace(session_dir, "[WORKSPACE]")}
+                return {"status": "error", "message": f"Chisel bridge did not open: {sanitize_browser_text(e, session_dir)}", "logs": sanitize_browser_text(log_output, session_dir)}
 
         # 3. CONNECT TO HARDWARE & FORCE CYCLE 0
         # 🚨 THE FIX: Consume the unsolicited Cycle 0 JSON that Chisel sends on boot!
@@ -647,7 +614,7 @@ async def compile_code(req: CompileRequest):
             "status": "success",
             "message": "Simulation Started!",
             "session_id": session_id,
-            "logs": log_output.replace(session_dir, "[WORKSPACE]") # Send full log backup
+            "logs": sanitize_browser_text(log_output, session_dir) # Send full log backup
         }
 
     except Exception as e:
@@ -656,7 +623,7 @@ async def compile_code(req: CompileRequest):
                 await terminate_owned_process(process, f"errored session {session_id}")
         except Exception:
             pass
-        return {"status": "error", "message": f"Server Error: {str(e)}", "logs": ""}
+        return {"status": "error", "message": f"Server Error: {sanitize_browser_text(e, session_dir)}", "logs": ""}
 
 
 # --- HELPER FUNCTIONS ---

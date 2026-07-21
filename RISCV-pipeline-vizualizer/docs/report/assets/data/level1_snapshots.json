@@ -3,7 +3,7 @@
     "level": 1,
     "session_id": "sess_validation_l1",
     "detected_level": 1,
-    "detection_message": "Detected Task 3 / Level 1 because no ForwardingUnit/HazardDetection/MemController/Branch file or Task 5 branch markers were found.",
+    "detection_message": "Detected Level 1 \u2014 Basic arithmetic pipeline (Task 3): no forwarding, branch/jump, memory, or hazard marker was found.",
     "cycles_observed": 12,
     "termination_observed": true,
     "forwarding_cycles": 0,

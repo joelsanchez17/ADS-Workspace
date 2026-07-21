@@ -1,210 +1,86 @@
 # Environment and Validation Record
 
-## Scope and evidence convention
+## Scope
 
-This record documents the environment used to validate the report assets on 21 July 2026. **Source-verified** means read from repository configuration or implementation. **Execution-verified** means observed by running the command or workflow. Project-local generated tools are stored under ignored `.venv/`, `.tools/`, and `node_modules/` directories and are not intended for Git.
+This internal record describes the final implementation and report validation performed on 21 July 2026. The working tree was based on Git revision `ff31871`; the approved application and documentation changes remained uncommitted, as requested. Paths below are repository-relative, and no account, host, or home-directory information is retained.
 
-Base Git revision: `02e87a0`. Validation also includes the uncommitted portability and documentation changes described in `RISCV_PIPELINE_VISUALIZER_REPORT.md`.
+## Host and toolchain
 
-## Host environment
-
-| Item | Value | Evidence |
+| Item | Validated value | Use |
 | --- | --- | --- |
-| Operating system | Ubuntu 24.04.4 LTS (Noble) under WSL2 | Execution-verified with `/etc/os-release` and `uname` |
-| Architecture | x86-64 | Execution-verified |
-| Kernel | Linux 6.6.87.2-microsoft-standard-WSL2 | Execution-verified |
-| Python | CPython 3.12.3 | Execution-verified with `python3 --version` |
-| Virtual environment | `.venv/` relative to repository root | Execution-verified |
-| Node.js / npm | 20.20.2 / 10.8.2 | Execution-verified |
+| Operating system | Ubuntu 24.04.4 LTS under WSL2, x86-64 | Application and report validation |
+| Python | CPython 3.12.3 in `.venv/` | FastAPI/Socket.IO service and validation utilities |
+| JDK | Eclipse Temurin 17.0.19 | Scala, Chisel, and chiseltest |
+| SBT | 1.9.7 | Dependency resolution and test launch |
+| Scala / Chisel / chiseltest | 2.12.13 / 3.5.0 / 0.5.0 | Processor construction and simulation |
+| Playwright / Chrome | 1.61.0 / Chrome for Testing 149.0.7827.55 | Browser regression and screenshots |
+| Mermaid CLI | 11.16.0 | Editable diagram export to SVG and PDF |
+| Tectonic | 0.16.9 | Academic PDF build |
+| Ghostscript | 10.02.1 | PDF page rendering and independent page-count check |
+| pypdf | 6.14.2 | PDF metadata, media-box, and page-count inspection |
 
-No hostname, account name, IP address, SSH data, token, or absolute home path is included in this record.
+Application requirements remain pinned in `requirements.txt`. Report and validation dependencies are pinned in `requirements-docs.txt`. Large generated tools and browser runtimes are kept under ignored `.tools/`, `.venv/`, and `node_modules/` directories.
 
-## Installed runtime and documentation tools
+## Installation and startup validation
 
-| Tool | Version | Location model | Purpose | Evidence |
-| --- | --- | --- | --- | --- |
-| Eclipse Temurin JDK | 17.0.19+10 | Project-local `.tools/jdk/` | Run SBT, Scala, Chisel, and chiseltest | Execution-verified with `java -version` |
-| SBT | 1.9.7 | Project-local `.tools/sbt/` | Resolve dependencies and run `LivePipelineTest` | Source- and execution-verified |
-| Scala | 2.12.13 | Resolved by SBT | Compile processor sources | Source-verified in `build.sbt`; compilation verified |
-| Chisel | 3.5.0 | Resolved by SBT | Hardware construction language | Source-verified in `build.sbt`; elaboration verified |
-| chiseltest | 0.5.0 | Resolved by SBT | Simulation, VCD, and live test | Source-verified in `build.sbt`; execution verified |
-| Mermaid CLI | 11.16.0 | Local `node_modules/` | Export architecture and sequence diagrams | Execution-verified |
-| Playwright | 1.61.0 | `.venv/` | Automated browser validation and screenshots | Execution-verified |
-| Chrome for Testing | 149.0.7827.55 | `.tools/playwright-browsers/` | Headless browser | Execution-verified |
-| Matplotlib | 3.11.1 | `.venv/` | Reproducible event-count graph | Execution-verified |
+The final scripts passed `bash -n scripts/setup.sh scripts/run.sh scripts/build_report.sh`. Python compilation checks passed for the application entry point, server, bridge, and validation script.
 
-The host did not provide a system browser or non-interactive administrator access. Chromium runtime packages `libnspr4`, `libnss3`, `libasound2t64`, and `libasound2-data` were therefore downloaded as Ubuntu packages and extracted under ignored `.tools/browser-libs/`; the operating system was not modified.
+`scripts/setup.sh` and `scripts/run.sh` were invoked from a temporary directory outside the repository. Setup dynamically found the project root, reused `.venv`, installed the pinned packages, detected JDK 17 and SBT 1.9.7, and reported that the complete simulation environment was ready. Startup likewise changed to the correct root, used the local environment, and served the application on `http://127.0.0.1:8080`. The setup output explains that the first SBT dependency resolution requires internet access and recommends `sbt --batch update`.
 
-## Python packages
+The missing-tool branches were inspected to confirm that Python, virtual-environment support, Java, and SBT failures return a nonzero status and display an installation command or official link. The script does not download a JDK or SBT and does not modify shell configuration.
 
-Direct application requirements are pinned in `requirements.txt`:
+## Web and interface regression
 
-```text
-fastapi==0.139.2
-pydantic==2.13.4
-python-socketio==5.16.3
-uvicorn==0.51.0
-```
+The application was started through `scripts/run.sh` and exercised with HTTP, Socket.IO, and a headless Chrome browser. The following checks passed:
 
-Documentation/validation additions are pinned in `requirements-docs.txt`: `httpx==0.28.1`, `matplotlib==3.11.1`, `playwright==1.61.0`, and `websocket-client==1.9.0`, in addition to the runtime file.
+- `/` and `/static/pipeline.svg` returned HTTP 200;
+- Socket.IO connected and joined the current session room;
+- `/workspace` returned HTTP 404 and no browser request used that route;
+- `/static/client.js` returned HTTP 404 and no browser request referenced it;
+- the compile request succeeded without a client-supplied `level` field;
+- the toolbar retained the Show Hazards control and had no Datapath checkbox or layout gap;
+- the visualizer continued to render forwarding, branch-flush, and load-use-stall overlays;
+- the selector labels were `System BinaryFile` and `Custom BinaryFile`;
+- Level 3 and Level 4 used the approved course names;
+- successful and intentionally failed compile logs contained useful explanations but no absolute user path;
+- a missing-VCD response used a logical session description rather than a filesystem path;
+- the generated Level 4 VCD loaded in the bundled Surfer viewer.
 
-The complete installed Python environment, including transitive packages, was:
+The intentionally invalid Scala source failed as expected. Its browser-facing SBT output substituted `[WORKSPACE]` for the session directory, showing that sanitization did not remove the diagnostic context.
 
-```text
-annotated-doc==0.0.4
-annotated-types==0.7.0
-anyio==4.14.2
-bidict==0.23.1
-certifi==2026.6.17
-click==8.4.2
-contourpy==1.3.3
-cycler==0.12.1
-fastapi==0.139.2
-fonttools==4.63.0
-greenlet==3.5.3
-h11==0.16.0
-httpcore==1.0.9
-httpx==0.28.1
-idna==3.18
-kiwisolver==1.5.0
-matplotlib==3.11.1
-numpy==2.5.1
-packaging==26.2
-pillow==12.3.0
-playwright==1.61.0
-pydantic==2.13.4
-pydantic_core==2.46.4
-pyee==13.0.1
-pyparsing==3.3.2
-python-dateutil==2.9.0.post0
-python-engineio==4.13.3
-python-socketio==5.16.3
-simple-websocket==1.1.0
-six==1.17.0
-starlette==1.3.1
-typing-inspection==0.4.2
-typing_extensions==4.16.0
-uvicorn==0.51.0
-websocket-client==1.9.0
-wsproto==1.3.2
-```
+## Course-level simulation validation
 
-## Installation commands used
+`docs/report/assets/source/validate_sessions.py` submitted representative sources through the same upload, compile, Socket.IO initialization, and cycle-stepping interfaces used by the browser. It did not send a client level. Each run continued through the first `coreDone` snapshot.
 
-### Python
+| Detected level | Course description | Last cycle | Forward / stall / flush cycles | Result |
+| ---: | --- | ---: | ---: | --- |
+| 1 | Basic arithmetic pipeline | 12 | 0 / 0 / 0 | Completed |
+| 2 | Data forwarding | 12 | 10 / 0 / 0 | Completed |
+| 3 | Branches and jumps | 15 | 1 / 0 / 2 | Completed |
+| 4 | Integrated memory and hazard handling | 51 | 23 / 4 / 6 | Completed |
 
-```bash
-python3 -m venv .venv
-.venv/bin/python -m pip install --upgrade pip
-.venv/bin/python -m pip install fastapi uvicorn python-socketio pydantic \
-    matplotlib playwright httpx websocket-client
-```
+The browser was also used to upload, compile, and step Levels 2, 3, and 4. The retained screenshots show Level 2 forwarding at cycle 3, a Level 3 taken branch at cycle 7, and a Level 4 load-use stall at cycle 41. The Level 1 API run confirms upload, detection, compilation, and completion for the basic core.
 
-Versions successfully tested by these commands were then recorded in the two requirement files.
+The event totals demonstrate that the expected mechanisms were exercised. They are not a performance comparison because the BinaryFiles and run lengths differ.
 
-### Project-local JDK and SBT
+## Figures and screenshot privacy
 
-The following method was used because system installation required unavailable interactive privileges. It is recorded for reproducibility, not required when compatible system tools already exist.
+Affected screenshots were recaptured at a 1440 by 900 CSS-pixel viewport. Metadata is stored in `assets/data/screenshot_metadata.json` with base revision, level, system BinaryFile, cycle, and capture environment. Browser profiles, usernames, hostnames, notifications, and absolute paths are absent. The editable Mermaid sources in `assets/source/` were exported to both SVG and tightly cropped PDF publication formats in `assets/diagrams/`.
 
-```bash
-PROJECT_ROOT="$(git rev-parse --show-toplevel)"
-mkdir -p "$PROJECT_ROOT/.tools/jdk" "$PROJECT_ROOT/.tools/sbt"
+## Report build and inspection
 
-curl -fL -o /tmp/riscv-viz-jdk17.tar.gz \
-  'https://api.adoptium.net/v3/binary/latest/17/ga/linux/x64/jdk/hotspot/normal/eclipse'
-tar -xzf /tmp/riscv-viz-jdk17.tar.gz \
-  -C "$PROJECT_ROOT/.tools/jdk" --strip-components=1
+`scripts/build_report.sh` dynamically locates the repository and invokes Tectonic from `PATH` or the ignored project-local tool directory. It produces `docs/report/RISCV_PIPELINE_VISUALIZER_REPORT.pdf`. The final PDF properties are:
 
-curl -fL -o /tmp/riscv-viz-sbt-1.9.7.tgz \
-  'https://github.com/sbt/sbt/releases/download/v1.9.7/sbt-1.9.7.tgz'
-tar -xzf /tmp/riscv-viz-sbt-1.9.7.tgz \
-  -C "$PROJECT_ROOT/.tools/sbt" --strip-components=1
+| Property | Value |
+| --- | --- |
+| Total pages | 11 |
+| Main text | 8 pages, excluding title, contents, references, and appendix material |
+| Media box | 595.28 × 841.89 points (A4) |
+| Title metadata | `Architecture and Operation of a Web-Based RISC-V Pipeline Debugging Environment` |
+| Author metadata | `[Author name]` |
 
-export JAVA_HOME="$PROJECT_ROOT/.tools/jdk"
-export PATH="$JAVA_HOME/bin:$PROJECT_ROOT/.tools/sbt/bin:$PATH"
-java -version
-sbt --script-version
-sbt --batch update
-```
+All 11 pages were rendered to 992 by 1403 pixel PNG files at 120 dpi and inspected. The review covered the title page, contents, commands, troubleshooting and maintenance tables, three generated diagrams, landing screenshot, combined hazard figure, bibliography, and appendix. No clipped text, table overflow, broken figure, unresolved reference, or machine path was observed. The main document contains no repository URL placeholder or internal Markdown-to-LaTeX production section. Tectonic reported only non-fatal underfull-box warnings caused by breakable repository paths and bibliography URLs; no overfull box remained.
 
-The first `sbt --batch update` downloaded SBT 1.9.7 and its Scala 2.12.18 launcher, then resolved the project configured for Scala 2.12.13, Chisel 3.5.0, and chiseltest 0.5.0. The only reported build-definition messages were deprecation warnings for `Resolver.sonatypeRepo`.
+## Validation boundary and future checks
 
-### Documentation tools
-
-```bash
-PUPPETEER_SKIP_DOWNLOAD=true npm install
-
-PLAYWRIGHT_BROWSERS_PATH="$PWD/.tools/playwright-browsers" \
-  .venv/bin/playwright install chromium
-```
-
-Mermaid CLI is pinned in `package.json`/`package-lock.json`. The browser is used both by Playwright and, through `PUPPETEER_EXECUTABLE_PATH`, Mermaid CLI. The Mermaid exports are SVG; the graph exports are SVG and PDF; browser screenshots are PNG.
-
-## Validation commands and results
-
-### Static and setup checks
-
-| Check | Command or method | Result |
-| --- | --- | --- |
-| Shell syntax | `bash -n scripts/setup.sh scripts/run.sh` | Successful |
-| Python syntax | In-memory `compile()` over project Python files | Successful |
-| Setup independent of caller directory | Run `scripts/setup.sh` from a temporary directory | Successful after exporting local `JAVA_HOME`/`PATH` in the script |
-| Launch independent of caller directory | Run `scripts/run.sh` from a temporary directory | Successful |
-| First SBT dependency resolution | `sbt --batch update` | Successful |
-| Mermaid exports | Run local `mmdc` for three `.mmd` files | Three valid SVG files generated |
-| Matplotlib export | Run `plot_event_counts.py` | SVG and PDF generated |
-
-### Web startup and browser checks
-
-The application was started with `scripts/run.sh`. The following were execution-verified:
-
-- Uvicorn listened on `127.0.0.1:8080`.
-- `/` returned HTTP 200 with the current 69,677-byte HTML page.
-- `/static/pipeline.svg` returned HTTP 200.
-- the Socket.IO Engine.IO handshake returned HTTP 200 and advertised WebSocket upgrade;
-- Playwright loaded the page without JavaScript errors;
-- `socket.connected` evaluated to `true`;
-- the landing page and upload control were visible;
-- external Socket.IO, Monaco, and JSZip resources loaded in the online test environment.
-
-### Processor-level validation
-
-`docs/report/assets/source/validate_sessions.py` submitted controlled source trees through `/upload_and_detect` and `/compile`, joined each Socket.IO room, issued `init` and repeated `step`, and exported every processed snapshot until the first `coreDone`.
-
-| Level | Submitted reference | Detection | Compilation/TCP | Last cycle | Forward / stall / flush cycles |
-| --- | --- | --- | --- | ---: | ---: |
-| 1 | Task 3 solution | Level 1 | Successful | 12 | 0 / 0 / 0 |
-| 2 | Task 4 solution | Level 2 | Successful | 12 | 10 / 0 / 0 |
-| 3 | Task 5 branch solution | Level 3 | Successful | 15 | 1 / 0 / 2 |
-| 4 | Integrated infrastructure | Level 4 | Successful | 51 | 23 / 4 / 6 |
-
-Browser-level upload, detection, compilation, Socket.IO updates, pipeline rendering, and register rendering were directly verified for Levels 2 and 3. Level 4 was validated through the same HTTP/Socket.IO APIs and its recorded history was rendered in a browser for the stall screenshot. Screenshots record Level 2 forwarding at cycle 3, a Level 3 taken branch at cycle 7, and a Level 4 load-use stall at cycle 41.
-
-### VCD and Surfer
-
-Level 4 generated `PipelinedRV32I.vcd`. `/vcd/sess_validation_l4` returned HTTP 200 and 312,820 bytes. The bundled Surfer WASM page loaded the URL, displayed the processor hierarchy, and rendered selected clock and `io.dbg` traces. This path is execution-verified in `assets/screenshots/waveform_view.png`.
-
-## Failed checks and resolved environment issues
-
-1. The initial `python3 web_demo.py` review failed because the host Python had no web packages. A project virtual environment and pinned requirements resolved it.
-2. The first Playwright browser launch failed with missing `libnspr4.so`, followed by NSS/ALSA requirements. Project-local extraction of the four Ubuntu runtime packages resolved the launch without system modification.
-3. The first setup-script validation found that local Java was checked directly but not exported for local SBT. `scripts/setup.sh` now exports `JAVA_HOME` and prepends both local tool directories before invoking SBT.
-4. Running several live JVM sessions concurrently consumed substantial resources and delayed the first Level 4 compile. Server shutdown correctly terminated all owned process groups. Level 4 then compiled and completed alone in 8.3 seconds with warm dependency/build caches. This is an environment/resource constraint and also evidence that explicit per-session limits would be useful.
-
-## Remaining unverified or unresolved points
-
-- Python versions other than 3.12.3 and JDK versions other than Temurin 17.0.19 were not tested.
-- Offline browser operation is not supported by the current CDN-based HTML.
-- Multi-user load, malicious uploads, authentication, compiler sandboxing, and long-running session limits were not tested.
-- Browser screenshots were automated in headless Chrome; visual differences in other browser engines were not evaluated.
-- The Level 4 VCD headless test stops at 100 cycles if a program has not terminated. Longer waveform behavior was not tested.
-- Processor ISA conformance beyond the supplied programs and existing Scala tests was not re-certified.
-
-## Generated outputs
-
-- Editable Mermaid: `assets/source/system_architecture.mmd`, `execution_sequence.mmd`, `five_stage_pipeline.mmd`.
-- Diagram SVGs: `assets/diagrams/`.
-- Screenshot PNGs and metadata: `assets/screenshots/`, `assets/data/screenshot_metadata.json`.
-- Raw JSON/CSV validation data: `assets/data/`.
-- Plot source: `assets/source/plot_event_counts.py`.
-- Graph: `assets/graphs/hazard_event_counts.svg` and `.pdf`.
+The final phase did not change processor semantics, session architecture, CORS, VCD limits, decoder coverage, concurrency, authentication, sandboxing, frontend vendoring, or CI. Python versions other than 3.12.3, browser engines other than Chrome, hostile uploads, multi-user load, and public network deployment were not tested. Processor ISA conformance beyond the supplied programs and existing Scala tests was not re-certified. These boundaries are reflected as proportionate future work in the report.

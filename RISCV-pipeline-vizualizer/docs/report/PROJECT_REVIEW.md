@@ -46,7 +46,7 @@ The application was validated with Python 3.12.3. The exact installed Python pac
 The following portable installation and launch procedure was executed successfully, including when invoked outside the repository directory.
 
 ```bash
-git clone <repository-url>
+git clone git@github.com:RPTU-EIS/RISCV-pipeline-vizualizer.git
 cd RISCV-pipeline-vizualizer
 ./scripts/setup.sh
 ./scripts/run.sh
@@ -68,7 +68,7 @@ The safer default bind address is loopback; `--host` and `--port` permit an expl
 http://127.0.0.1:8080
 ```
 
-No input file is needed merely to open the landing page. To enter the IDE, the user must upload a folder containing accepted Scala sources, normally `src/main/scala/*.scala`; Levels 1–3 additionally require a file named `PipelinedRISCV32I.scala` (`web_visualizer/server.py:344–424`). A file whose basename contains `BinaryFile` is optional at upload time. Despite UI wording such as “custom assembly,” this file must contain one 32-bit instruction word per line as hexadecimal text. No assembler is present.
+No input file is needed merely to open the landing page. To enter the IDE, the user must upload a folder containing accepted Scala sources, normally `src/main/scala/*.scala`; Levels 1–3 additionally require a file named `PipelinedRISCV32I.scala`. A file whose basename contains `BinaryFile` is optional at upload time. The interface describes it as a custom hexadecimal machine-code program: it must contain one 32-bit instruction word per line. No assembler is present.
 
 ### What was actually validated
 
@@ -142,7 +142,7 @@ This diagram is **source-verified in structure** but is a documentation abstract
 4. The server rejects unsafe paths, generated/build paths, `build.sbt`, student tests, non-hardware Scala paths, and unrelated file types (`server.py:193–238`, `:344–376`). Duplicate Scala basenames are rejected because compilation flattens accepted files into one Scala directory (`:378–385`).
 5. Level detection is heuristic and source-based (`server.py:258–289`): `Branch.scala` or memory/hazard marker files imply Level 4; branch/jump source markers imply Level 3; `ForwardingUnit.scala` implies Level 2; otherwise Level 1. The server returns the accepted source, the detected level, a system `BinaryFile`, and any uploaded custom `BinaryFile`.
 6. The browser hides the landing page, populates its in-memory `codes` object, creates a Monaco editor and file tree, stores edits in `sessionStorage`, and lets the user choose the system or custom hexadecimal program (`index.html:1297–1372`, `:1553–1574`, `:1597–1609`).
-7. “Compile & Simulate” posts Scala source, selected `BinaryFile`, and a browser session ID to `/compile` (`index.html:1455–1489`). Although the request includes `level`, the backend recalculates the level and ignores `req.level` (`server.py:447–460`).
+7. “Compile & Simulate” posts Scala source, the selected `BinaryFile`, and a browser session ID to `/compile`. The backend recalculates the level and remains authoritative.
 8. The backend creates/reuses `temp_sessions/sess_<id>`, chooses a course solution scaffold for Levels 1–3 or `infrastructure_template` for Level 4, removes scaffold hardware/test code as appropriate, writes the uploaded Scala files into `src/main/scala`, installs the controlled `LivePipelineTest.scala`, and writes the selected `BinaryFile` (`server.py:462–536`).
 9. A free local port is assigned in `CHISEL_PORT`; SBT is started as `sbt --batch "testOnly *LivePipelineTest"` in its own process group (`server.py:540–556`). Logs are streamed into the session's Socket.IO room. The test class first runs a headless simulation of at most 100 cycles with `WriteVcdAnnotation`, then starts its live TCP test (`LivePipelineTest.scala:12–38`).
 10. The live test opens a server socket, emits an unsolicited cycle-zero JSON snapshot, waits for a command, advances/reset the clock, and then emits the next snapshot (`LivePipelineTest.scala:51–68`, `:105–235`). The backend connects a `ChiselBridge`, consumes the unsolicited snapshot, forces reset, enriches the resulting snapshot, and stores it as session history (`server.py:592–645`).
@@ -154,10 +154,10 @@ This diagram is **source-verified in structure** but is a documentation abstract
 1. Open `http://localhost:8080`.
 2. Upload the processor project's `src` folder. Accepted hardware is normally under `src/main/scala`; student tests are deliberately ignored.
 3. Review the detected level and files in the Monaco editor. Edits remain browser-side until compilation and are cached in `sessionStorage`.
-4. Choose **System Testbench** or **My Custom Assembly**. Technically, both choices select hexadecimal `BinaryFile` content; assembly mnemonics are not assembled.
+4. Choose **System BinaryFile** or **Custom BinaryFile**. Both contain hexadecimal machine code, one 32-bit word per line; assembly mnemonics are not assembled.
 5. Select **Compile & Simulate**. SBT output appears in the console; successful compilation switches to the pipeline view.
 6. Use **Restart** (hardware reset/cycle zero), **Back** (move backward in cached snapshots), **Step** (one cycle), or **Fast** (five cycles). Left/right arrow keys duplicate Back/Step.
-7. Use the tabs for **Code Editor**, **Pipeline Visualizer**, and **Waveforms**. “Show Hazards” controls hazard/branch annotations. The “Datapath” checkbox triggers redraw but is not consulted by `updateSVG`, so it presently has no visible implementation effect.
+7. Use the tabs for **Code Editor**, **Pipeline Visualizer**, and **Waveforms**. “Show Hazards” controls hazard/branch annotations.
 8. **Export** creates `updated_riscv_project.zip` from the browser's current `codes` object using JSZip. **Upload New Code** returns to the landing screen and clears browser storage after confirmation.
 
 Important semantics:
@@ -186,7 +186,7 @@ The visualizer does not enforce one fixed ISA. It compiles the user's modules, s
 
 - The Level 1/Task 3 reference implements a five-stage arithmetic pipeline without forwarding. Its source and sample program cover RV32I register-register arithmetic/logical/shift/compare operations and immediate arithmetic variants; test programs insert NOPs around dependencies.
 - The Level 2/Task 4 reference adds MEM- and WB-to-EX forwarding (`course_material/task4_level2/solution/src/main/scala/ForwardingUnit.scala`). Its system program intentionally chains dependent arithmetic instructions.
-- The Level 3/Task 5 reference adds conditional branches and JAL/JALR, resolves them in EX, redirects fetch, and flushes younger IF/ID instructions (`task5_level3_branch/solution/src/main/scala/EXstage.scala` and `core.scala:134–169`). Despite the current landing-page label “Memory,” backend Level 3 is the branch/jump task.
+- Level 3 — Branches and jumps (Task 5) adds conditional branches and JAL/JALR, resolves them in EX, redirects fetch, and flushes younger IF/ID instructions (`task5_level3_branch/solution/src/main/scala/EXstage.scala` and `core.scala:134–169`).
 - The Level 4 infrastructure integrates arithmetic, `LW`/`SW`, forwarding, a load-use interlock, and control flow. Its `ControlUnit` implements word loads/stores only; `BranchCheck` implements BEQ and BNE only. The Python display decoder recognizes a wider set (byte/halfword loads/stores and all six RV32I branch mnemonics), but recognition in the UI must not be mistaken for hardware support.
 
 The Level 4 ALU source has two implementation caveats worth disclosing: `SRA` uses a logical `UInt` shift rather than converting to signed first, and `SLT` compares `UInt` operands. The course Task 3–5 ALU solutions use signed conversion for these operations. Therefore the full infrastructure's signed SRA/SLT behavior should be tested before it is described as ISA-conformant.
@@ -224,17 +224,13 @@ Session state is held in the process-local `active_sessions` dictionary as the S
 
 ### Current limitations and risks
 
-- There is no dependency manifest or top-level README for the web application, so installation is not reproducible and versions may drift.
+- The pinned dependency manifests and top-level README make the validated installation reproducible; support beyond the recorded Python/JDK versions remains unspecified.
 - The frontend has mandatory CDN dependencies. A disconnected lab environment cannot load the main Socket.IO client or Monaco/JSZip.
 - Uvicorn binds to all interfaces, FastAPI CORS and Socket.IO origins are unrestricted, there is no authentication, and uploaded Scala is compiled/executed. The application should be treated as a trusted teaching-lab tool, not an internet-facing service.
 - Compilation executes resource-intensive SBT processes without quotas, request size limits, timeouts for the entire build, or per-user authentication.
 - A browser leaving a page does not stop its backend simulation; session directories are not removed automatically.
-- The `req.level` field is unused. Auto-detection relies on filenames and string markers, so unusual valid implementations can be misclassified.
-- Course nomenclature is inconsistent: backend Level 3 is branch/jump, while current landing labels Level 3 “Memory” and Level 4 “Branches.”
-- The UI calls `BinaryFile` content “assembly,” but accepts raw machine-word hex only.
-- The “Datapath” checkbox has no implemented effect. `active_bridges`, global `debug_state`, and `LEVEL_MARKER_FILES` are unused.
-- `web_visualizer/static/client.js` duplicates older portions of the inline script but is never loaded by `index.html`; the inline script is authoritative.
-- `GET /workspace` points at nonexistent `infrastructure_template/level_<n>` directories and is not called by the current upload-first UI. It appears obsolete/incomplete.
+- Auto-detection relies on filenames and string markers, so unusual valid implementations can be misclassified.
+- `active_bridges`, global `debug_state`, and `LEVEL_MARKER_FILES` remain unused internal symbols.
 - The Python decoder omits immediate shifts and SLTI/SLTIU, reports the `0x73` terminator as `unknown`, and recognizes some memory/branch instructions that particular cores do not implement.
 - Branch display logic recomputes taken/not-taken in JavaScript from operand values and decoded text rather than displaying the hardware's `pc_src` directly; unsigned BLTU/BGEU are not handled in this UI recomputation.
 - SBT runs both tests in `LivePipelineTest`: VCD generation is capped at 100 cycles, so longer programs can have a truncated waveform even though live stepping can continue.
@@ -243,7 +239,6 @@ Session state is held in the process-local `active_sessions` dictionary as the S
 ### Obsolete, duplicated, experimental, or non-entry-point material
 
 - `live_debug/*` is a separate terminal UI and launcher. Only `live_debug.decoder.decode_rv32i` is reused by the web application.
-- `web_visualizer/static/client.js` is unused and duplicates older browser logic now embedded in `index.html`.
 - `images/rv32core_uvm_tb.png` describes a UVM-style testbench that is not part of the Python/Chisel web execution path; it should not be used to explain this application.
 - `images/processor_architecture.png` is a useful conceptual diagram for the full infrastructure but is not generated from the current code and is denser than the browser SVG.
 - Skeleton and solution course directories are intentional teaching/reference variants, not duplicate production implementations. For web compilation, solution folders mainly provide build scaffolding; uploaded `src/main/scala` replaces the reference hardware.
@@ -269,7 +264,5 @@ The existing system programs are the safest reproducible figure inputs:
 
 1. Which Python, JDK, and OS versions should be declared officially supported beyond the validated environment?
 2. Is the report intended to describe the upload/visualization platform, the full Level 4 processor, or all course levels equally?
-3. Are “Level 3 Memory / Level 4 Branches” UI labels intentional, or should they match the backend's Task 5 branch Level 3 and full infrastructure Level 4 mapping?
-4. Should a `BinaryFile` be described explicitly as hexadecimal machine code in student-facing documentation?
-5. Should CI automate the now-recorded Level 1–4, browser, and VCD validation scenarios?
-6. Are the institutional logos and the named supervisor approved for publication in the report?
+3. Should CI automate the now-recorded Level 1–4, browser, and VCD validation scenarios?
+4. Are the institutional logos and the named supervisor approved for publication in the report?

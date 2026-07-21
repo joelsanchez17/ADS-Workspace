@@ -13,7 +13,7 @@ sequenceDiagram
     Browser->>API: POST /upload_and_detect (source map)
     API->>API: Filter paths and detect level
     API-->>Browser: Accepted sources, level, system BinaryFile
-    User->>Browser: Select test and Compile & Simulate
+    User->>Browser: Select system or custom BinaryFile and compile
     Browser->>WS: Join session room
     Browser->>API: POST /compile
     API->>Session: Copy scaffold, write Scala and BinaryFile

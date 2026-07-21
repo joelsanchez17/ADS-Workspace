@@ -3,7 +3,7 @@
     "level": 4,
     "session_id": "sess_validation_l4",
     "detected_level": 4,
-    "detection_message": "Detected Level 4 because Branch.scala, HazardDetection.scala, MemController.scala was found.",
+    "detection_message": "Detected Level 4 \u2014 Integrated memory and hazard handling: Branch.scala, HazardDetection.scala, MemController.scala was found.",
     "cycles_observed": 51,
     "termination_observed": true,
     "forwarding_cycles": 23,

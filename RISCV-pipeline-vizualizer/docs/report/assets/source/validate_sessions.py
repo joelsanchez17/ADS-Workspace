@@ -70,7 +70,6 @@ def run_level(base_url: str, level: int, max_cycles: int) -> tuple[list[dict], d
                 "scala_files": detection["scala"],
                 "asm_code": detection["asm_system"],
                 "session_id": session_id,
-                "level": level,
             },
         ).raise_for_status().json()
         if compilation.get("status") != "success":

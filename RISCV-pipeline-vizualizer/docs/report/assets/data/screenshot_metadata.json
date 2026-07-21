@@ -1,5 +1,6 @@
 {
-  "base_git_revision": "02e87a0",
+  "base_git_revision": "ff31871",
+  "working_tree_state": "Approved terminology, portability, and documentation changes applied after the base revision",
   "capture_date": "2026-07-21",
   "browser": "Chrome for Testing 149.0.7827.55 via Playwright 1.61.0",
   "viewport": "1440x900 CSS pixels",
@@ -37,7 +38,7 @@
       "level": 4,
       "binary_file": "infrastructure_template/system_tests/level_4/BinaryFile",
       "cycle": "VCD covers the 51-cycle headless run",
-      "demonstrates": "Bundled Surfer loading the generated VCD and displaying clock and io.dbg signals"
+      "demonstrates": "Bundled Surfer loading the generated Level 4 VCD and exposing the processor hierarchy"
     }
   ],
   "privacy_review": "Browser chrome, accounts, notifications, hostnames, and machine-specific paths are absent. Only localhost URLs appear where the waveform source is visible."

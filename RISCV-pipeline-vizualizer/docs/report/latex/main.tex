@@ -1,0 +1,287 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage[a4paper,margin=2.5cm]{geometry}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{fancyhdr}
+\usepackage[numbers,sort&compress]{natbib}
+\usepackage[hidelinks]{hyperref}
+
+\graphicspath{{../assets/diagrams/}{../assets/screenshots/}{../assets/graphs/}}
+\setlength{\parindent}{1.25em}
+\setlength{\parskip}{0.2em}
+\setlength{\headheight}{14pt}
+\setcounter{tocdepth}{2}
+\captionsetup{font=small,labelfont=bf}
+\renewcommand{\arraystretch}{1.15}
+\newcolumntype{Y}{>{\raggedright\arraybackslash}X}
+
+\definecolor{codebg}{RGB}{245,247,249}
+\definecolor{codeframe}{RGB}{210,216,222}
+\lstdefinestyle{terminal}{
+  basicstyle=\ttfamily\small,
+  backgroundcolor=\color{codebg},
+  frame=single,
+  rulecolor=\color{codeframe},
+  framerule=0.4pt,
+  breaklines=true,
+  columns=fullflexible,
+  keepspaces=true,
+  showstringspaces=false,
+  xleftmargin=0.5em,
+  framexleftmargin=0.4em
+}
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{RISC-V Pipeline Visualizer}
+\fancyhead[R]{Technical Report}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.3pt}
+
+\hypersetup{
+  pdftitle={Architecture and Operation of a Web-Based RISC-V Pipeline Debugging Environment},
+  pdfauthor={[Author name]},
+  pdfsubject={RISC-V pipeline teaching and debugging environment},
+  pdfkeywords={RISC-V, Chisel, pipeline, visualization, teaching}
+}
+
+\begin{document}
+\pagenumbering{gobble}
+
+\begin{titlepage}
+  \centering
+  \vspace*{2.5cm}
+  {\Large RPTU Kaiserslautern-Landau\par}
+  \vspace{1.8cm}
+  {\huge\bfseries Architecture and Operation of a Web-Based RISC-V Pipeline Debugging Environment\par}
+  \vspace{1cm}
+  {\Large Technical Report\par}
+  \vfill
+  \begin{tabular}{@{}rl@{}}
+    Author: & [Author name] \\
+    Supervisor: & [Supervisor name] \\
+    Chair / Department: & [Chair or department] \\
+    Institution: & RPTU Kaiserslautern-Landau \\
+    Date: & [Submission date]
+  \end{tabular}
+  \vfill
+\end{titlepage}
+
+\pagenumbering{roman}
+\tableofcontents
+\clearpage
+\pagenumbering{arabic}
+
+\section*{Abstract}
+\addcontentsline{toc}{section}{Abstract}
+
+This report presents a browser-based environment for teaching and debugging a five-stage RISC-V processor written in Chisel. The application connects an editable view of a student's processor sources to a controlled chiseltest simulation and displays instruction flow, registers, hazard signals, logs, and waveform data. A Python service manages uploads and session workspaces, while a TCP bridge exchanges cycle commands and JSON snapshots with the Scala testbench. The design gives students a concrete view of forwarding, stalls, and control-hazard recovery without replacing the processor implementation that they are expected to develop. This report explains installation, classroom use, system structure, representative behavior, and the principal maintenance points. Validation covered all four course levels on Ubuntu 24.04 under WSL2 with Python 3.12, JDK 17, and SBT 1.9.7. The current deployment target is a trusted local teaching environment.
+
+\section{Introduction and motivation}\label{sec:introduction}
+
+Pipelining is often introduced as a timing diagram, yet the most difficult errors arise where several representations meet: an instruction encoding, a register-transfer implementation, control signals, and state that changes on a clock edge. A source-level simulator alone does not show these relationships well. Conversely, a conventional waveform viewer is precise but can overwhelm a student who has not yet learned which signals matter. The RISC-V Pipeline Visualizer combines these views around the familiar five-stage pipeline and keeps the student's Chisel sources in the same workflow.
+
+The system is intended for a staged processor-design course. It detects the uploaded project level and presents the corresponding teaching description: Level~1---Basic arithmetic pipeline; Level~2---Data forwarding; Level~3---Branches and jumps; and Level~4---Integrated memory and hazard handling. These names describe the course progression, not a guarantee that every uploaded core implements an identical RV32I subset. RISC-V deliberately separates the instruction-set architecture from any particular microarchitecture~\cite{riscv-unprivileged}; this project concentrates on one in-order educational organization.
+
+The application is a debugging aid rather than a processor generator. Students still implement the hardware. The environment supplies a controlled Scala/chiseltest testbench, stages the selected machine-code program, advances the simulation, and visualizes debug outputs exposed by the core. The result is useful both during a laboratory session and when an instructor needs to reproduce a student's pipeline state.
+
+\begin{figure}[tb]
+  \centering
+  \includegraphics[width=0.93\textwidth]{landing_interface.png}
+  \caption{First-use interface. The student selects the project \texttt{src} directory and the service detects the course level before compilation.}
+  \label{fig:landing}
+\end{figure}
+
+\section{Installation and first startup}\label{sec:installation}
+
+\subsection{Prerequisites and assisted setup}
+
+The host requires Python~3 with virtual-environment support, a compatible Java Development Kit, SBT, and internet access for initial dependency resolution. JDK~17 and SBT~1.9.7 were used for final validation. The repository is obtained and prepared with Listing~\ref{lst:quick-install}.
+
+\begin{lstlisting}[style=terminal,caption={Clone, setup, and startup commands.},label={lst:quick-install}]
+git clone git@github.com:RPTU-EIS/RISCV-pipeline-vizualizer.git
+cd RISCV-pipeline-vizualizer
+./scripts/setup.sh
+./scripts/run.sh
+\end{lstlisting}
+
+The setup script determines the repository root from its own location, creates or reuses \texttt{.venv}, and installs the pinned packages from \texttt{requirements.txt}. It then checks Java and SBT and reports whether the complete simulation environment is ready. Missing prerequisites produce a nonzero exit status and an installation command or official download link; the script does not silently download a JDK or SBT. The first SBT dependency resolution requires an internet connection and can take appreciably longer than later starts. Running \texttt{sbt --batch update} once is therefore recommended before a class~\cite{sbt-docs}.
+
+The run script activates the repository-local environment and starts the service independently of the caller's current directory. The terminal prints the browser address, normally \url{http://127.0.0.1:8080}. Both scripts were tested when invoked from outside the repository.
+
+\subsection{Manual setup and first upload}
+
+If the helper cannot be used, the Python portion can be prepared manually:
+
+\begin{lstlisting}[style=terminal]
+python3 -m venv .venv
+.venv/bin/python -m pip install --upgrade pip
+.venv/bin/python -m pip install -r requirements.txt
+sbt --batch update
+.venv/bin/python web_demo.py
+\end{lstlisting}
+
+After opening the printed local address, the user selects the \texttt{src} directory of a course project, not the repository root. The upload is reviewed before compilation. A \texttt{BinaryFile} is a hexadecimal machine-code program with one 32-bit instruction word per line; it is not assembly-language source. The interface can use the system BinaryFile for the detected level or a custom BinaryFile supplied by the student.
+
+\begin{table}[tb]
+\centering
+\caption{Concise startup troubleshooting guide.}
+\label{tab:troubleshooting}
+\small
+\begin{tabularx}{\textwidth}{@{}p{0.22\textwidth}YY@{}}
+\toprule
+Symptom & Likely cause & Action \\
+\midrule
+Python or virtual environment fails & Python or the \texttt{venv} package is absent & Follow the command printed by the setup script, then rerun it. \\
+Java or SBT check fails & Simulation prerequisite is absent from \texttt{PATH} & Install JDK~17 and SBT using the displayed official guidance. \\
+First compile appears slow & SBT is resolving Scala and Chisel dependencies & Keep internet access available and allow the first run to finish. \\
+Browser does not open & Desktop integration is unavailable & Open the address printed in the terminal manually. \\
+Scala compilation fails & Submitted sources do not compile against the scaffold & Read the browser log; local session paths appear as \texttt{[WORKSPACE]}. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Use in teaching}\label{sec:teaching}
+
+The instructor prepares the computer, performs the first dependency download, and starts the local service. They also provide or approve the source projects and system BinaryFiles used in an exercise. Because compilation executes uploaded Scala/Chisel, the validated setting is a trusted local laboratory; exposing the service to untrusted users is outside its present scope.
+
+The student selects the relevant \texttt{src} directory. The browser sends accepted source files to the service, which detects the level from project structure and content. The student reviews the detected level and the files shown in the editor, then chooses the system or custom BinaryFile and compiles. The custom program format is deliberately direct: one eight-digit hexadecimal instruction word per line, with no labels, mnemonics, or assembler directives.
+
+Once compilation succeeds, the student initializes the simulation and advances it one cycle at a time. The central datapath shows the instructions occupying IF, ID, EX, MEM, and WB. The register panel exposes architectural values, while the terminal records compilation and cycle events. Hazard overlays make forwarding choices, pipeline holds, and flushes visible. The history controls allow earlier snapshots to be revisited without rerunning the processor, and the waveform control opens the generated VCD in the bundled Surfer viewer. Edited source files can be exported for continued project work.
+
+This sequence supports several teaching patterns. An instructor can ask students to predict the next pipeline state before stepping; students can compare a forwarding implementation with the register values it produces; and a branch exercise can relate the EX-stage decision to the younger instructions being flushed. The visualizer does not replace normal tests. It provides a focused explanation of a failing or surprising cycle so that a student can return to the Chisel implementation with a specific hypothesis.
+
+\section{System architecture}\label{sec:architecture}
+
+The system has three cooperating layers, summarized in Figure~\ref{fig:architecture}. The browser contains the upload workflow, editor, controls, SVG datapath, register table, log, and waveform frame. The Python ASGI application uses FastAPI for HTTP endpoints and Socket.IO for session-oriented, bidirectional events~\cite{fastapi-docs,socketio-docs}. The simulation layer consists of SBT, Chisel, chiseltest, and \texttt{LivePipelineTest.scala}. Chisel is a hardware construction language embedded in Scala~\cite{chisel-docs}, while chiseltest supplies the clocked execution used here~\cite{chiseltest}.
+
+\begin{figure}[tb]
+  \centering
+  \includegraphics[width=\textwidth,trim=8bp 620bp 8bp 8bp,clip]{system_architecture.pdf}
+  \caption{System architecture. HTTP handles upload, compilation, static content, and VCD delivery; Socket.IO carries cycle commands and updates; a per-session testbench process runs the uploaded processor.}
+  \label{fig:architecture}
+\end{figure}
+
+\texttt{web\_demo.py} is the executable entry point. It launches the ASGI server and reports the local address. \texttt{web\_visualizer/server.py} owns the HTTP and Socket.IO application, filters uploaded paths, detects the course level, prepares a temporary session workspace, starts SBT, and retains processed history. \texttt{web\_visualizer/bridge.py} is the transport boundary between this orchestration layer and the Scala process.
+
+For compilation, the service copies the controlled infrastructure template into a session directory, adds the accepted student Scala sources, and writes the selected BinaryFile to the expected system-test location. SBT launches \texttt{LivePipelineTest}, which elaborates the processor and opens a session-specific TCP server. The Python bridge connects to that socket. Text commands travel toward the testbench and JSON snapshots travel back. This separation prevents the web layer from having to interpret simulator internals directly.
+
+Each browser connection joins a Socket.IO room associated with its session. An \texttt{init} or \texttt{step} event is routed through the bridge, and the response is enriched with decoded instruction text and retained in history before it is returned to that room. The browser then updates the existing SVG and register table. VCD generation remains part of the controlled testbench; the service exposes the resulting file through a session-specific endpoint that Surfer can load~\cite{surfer}.
+
+\section{Five-stage pipeline visualization}\label{sec:pipeline}
+
+The visual model follows the classic IF, ID, EX, MEM, and WB organization shown in Figure~\ref{fig:pipeline}. IF obtains the instruction at the program counter. ID decodes it and reads source registers. EX performs arithmetic, evaluates control flow, or forms an address. MEM accesses data memory where the implementation requires it. WB returns a selected value to the register file. Pipeline registers separate adjacent stages and allow several instructions to be in flight simultaneously.
+
+\begin{figure}[tb]
+  \centering
+  \includegraphics[width=\textwidth,trim=8bp 670bp 8bp 8bp,clip]{five_stage_pipeline.pdf}
+  \caption{Simplified five-stage datapath and hazard paths. Dashed paths represent forwarding; control and load-use decisions can redirect, hold, flush, or inject a bubble.}
+  \label{fig:pipeline}
+\end{figure}
+
+The display maps each snapshot to this conceptual structure. Stage boxes show the current instruction and program counter, and the hazard overlay emphasizes controls relevant to the cycle. The visualization is intentionally simpler than the Chisel hierarchy. Its purpose is to expose causal relationships, such as a MEM result feeding an EX operand, without requiring students to navigate every generated signal.
+
+A read-after-write dependency need not stall when the value is already available later in the pipeline. Forwarding multiplexers select an EX/MEM or MEM/WB result instead of a stale register-file output. The Level~2 display reports those selector values and highlights active routes. A load-use dependency differs because load data is not available early enough for the immediately following EX stage. The integrated core therefore holds the program counter and IF/ID register while inserting a bubble into the next stage.
+
+Branches and jumps introduce control hazards. In the demonstrated Level~3 design, the decision becomes visible in EX. A taken branch redirects the next fetch and invalidates younger instructions that entered along the fall-through path. The interface presents target and flush state together, connecting the control decision with the changed stream. These descriptions concern the supplied course implementations; they are not claims about all possible RISC-V microarchitectures.
+
+\section{Compilation and simulation workflow}\label{sec:workflow}
+
+The complete request sequence is shown in Figure~\ref{fig:sequence}. Upload and compilation use HTTP because they transfer structured files and return a definite result. Interactive stepping uses Socket.IO because the server must send logs and processor updates to the correct live session. The client does not choose its project level in the compile request; server-side detection remains authoritative.
+
+\begin{figure}[tb]
+  \centering
+  \includegraphics[width=\textwidth,trim=30bp 428bp 17bp 7bp,clip]{execution_sequence.pdf}
+  \caption{Execution sequence from source selection to a rendered cycle. The controlled testbench advances the clock and returns one JSON snapshot for each step command.}
+  \label{fig:sequence}
+\end{figure}
+
+Path filtering at upload time accepts project material required for the exercise and rejects unrelated traversal. During workspace preparation, browser-visible messages refer to \texttt{[WORKSPACE]} or logical repository locations so that local account and machine paths do not leak into the interface. Server diagnostics may retain absolute paths when needed for administration. A failed Scala compilation still returns its explanation and relevant SBT output after sanitization.
+
+The testbench first performs the existing headless run that produces a VCD. It then starts the interactive TCP loop, resets the design, and emits the initial state. On each \texttt{step} command it advances the clock, samples the debug bundle, serializes the fields, and sends one line of JSON. The Python service decodes instruction words for presentation, appends the snapshot to session history, and emits an update. This protocol keeps the simulator deterministic from the user's perspective: one accepted command corresponds to one displayed cycle.
+
+The current design deliberately preserves the supplied simulation structure and VCD limits. It also preserves processor semantics; forwarding, stalls, branches, memory behavior, and instruction coverage are properties of the uploaded course core and controlled infrastructure, not of the web interface.
+
+\section{Demonstrated pipeline behavior}\label{sec:behavior}
+
+Final regression tests exercised uploads for Levels~1 through~4 and completed representative programs at cycles 12, 12, 15, and 51 respectively. Level~1 showed the basic arithmetic pipeline. Level~2 produced forwarding activity without stalls or flushes. Level~3 demonstrated a taken branch and removal of younger instructions. Level~4 exercised forwarding, load-use holds, control-flow recovery, and memory behavior. These run lengths belong to different programs and are not a performance comparison.
+
+Figure~\ref{fig:hazards} isolates the mechanisms most useful in a teaching discussion. In the forwarding example, both EX operand selectors are active for the dependent arithmetic instruction at cycle~3. At Level~3 cycle~7, a taken \texttt{beq} in EX redirects the fetch address and asserts the flush. At Level~4 cycle~41, a load-use dependency disables the program-counter write, holds IF/ID, and inserts a bubble.
+
+\begin{figure}[p]
+  \centering
+  \begin{subfigure}{0.82\textwidth}
+    \centering
+    \includegraphics[width=\linewidth,height=0.19\textheight,keepaspectratio]{level2_forwarding_cycle_03.png}
+    \caption{Level~2 forwarding, cycle~3.}
+  \end{subfigure}\par\medskip
+  \begin{subfigure}{0.82\textwidth}
+    \centering
+    \includegraphics[width=\linewidth,height=0.19\textheight,keepaspectratio]{level3_branch_flush_cycle_07.png}
+    \caption{Level~3 taken branch and flush, cycle~7.}
+  \end{subfigure}\par\medskip
+  \begin{subfigure}{0.82\textwidth}
+    \centering
+    \includegraphics[width=\linewidth,height=0.19\textheight,keepaspectratio]{level4_load_use_stall_cycle_41.png}
+    \caption{Level~4 load-use stall, cycle~41.}
+  \end{subfigure}
+  \caption{Representative hazard behavior from the system BinaryFile for each detected level. The screenshots were captured at a 1440 by 900 CSS-pixel viewport from the working tree based on revision \texttt{ff31871}.}
+  \label{fig:hazards}
+\end{figure}
+
+The regression also checked the complete browser path: the landing page loaded, Socket.IO connected, hazard rendering remained active, the toolbar stayed aligned after removal of the nonfunctional Datapath control, and the browser made no request for the removed \texttt{/workspace} route or obsolete \texttt{client.js}. Successful and intentionally failed compilations did not expose an absolute user path. The Level~4 VCD was served successfully and loaded by the bundled Surfer application.
+
+\section{Maintenance and future development}\label{sec:maintenance}
+
+The repository separates entry, orchestration, presentation, simulation, and teaching material closely enough that most changes have a clear starting point. Table~\ref{tab:implementation-map} gives the principal extension points.
+
+\begin{table}[tb]
+\centering
+\caption{Principal implementation and maintenance files.}
+\label{tab:implementation-map}
+\small
+\begin{tabularx}{\textwidth}{@{}p{0.39\textwidth}Y@{}}
+\toprule
+Path & Responsibility \\
+\midrule
+\path{web_demo.py} & Local entry point and browser-address reporting. \\
+\path{web_visualizer/server.py} & HTTP/Socket.IO API, filtering, detection, staging, process launch, history, and VCD delivery. \\
+\path{web_visualizer/bridge.py} & TCP command and snapshot exchange with the Scala testbench. \\
+\path{web_visualizer/templates/index.html} & Interface, editor, controls, rendering logic, and student terminology. \\
+\path{web_visualizer/static/pipeline.svg} & Visual structure and element identifiers used by the renderer. \\
+\path{infrastructure_template/src/test/scala/LivePipelineTest.scala} & Controlled headless and interactive chiseltest behavior, snapshot schema, and VCD production. \\
+\path{course_material/} & Reference sources for the staged course levels. \\
+\path{infrastructure_template/system_tests/} & Level-specific hexadecimal BinaryFiles and test inputs. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Changes crossing the Python/Scala boundary require particular care: a renamed JSON field must be updated in the testbench, bridge processing, history, and browser renderer. A new visible pipeline signal normally requires a Chisel debug output, snapshot serialization, server enrichment if needed, and a matching SVG/JavaScript binding. Changes to level detection should be tested against representative source trees and remain a server decision.
+
+Future work should remain proportionate to the deployment goal. Frontend libraries could be packaged locally for optional offline operation. Session cleanup and process-resource controls would improve long-running and multi-user use. Any network-facing deployment would require authentication, restrictive origin policy, upload isolation, and a stronger execution sandbox. Broader automated browser and processor regression would reduce maintenance risk. Finally, possible signed \texttt{SRA} or \texttt{SLT} corrections should begin with processor ISA tests and supervisor approval rather than being folded into interface maintenance.
+
+\section{Conclusion}\label{sec:conclusion}
+
+The RISC-V Pipeline Visualizer makes a student's clocked processor behavior inspectable without taking ownership of the processor design. Its browser view connects source files and machine-code input with stage occupancy, architectural state, hazards, logs, and VCD waveforms, while the controlled Chisel testbench remains the authority for simulation. The installation helpers and repository documentation now provide a short transfer path for a supervisor, and the four course levels use consistent descriptions throughout the interface and report. Within its intended trusted local setting, the system is ready to support laboratory demonstrations and cycle-by-cycle debugging. Further development should concentrate on operational robustness and test coverage before broadening deployment or changing processor semantics.
+
+\bibliographystyle{plainnat}
+\bibliography{references}
+\addcontentsline{toc}{section}{References}
+
+\appendix
+\section{Validation boundary}
+
+The final regression used the supplied system BinaryFiles and completed all four detected course levels. It checked shell and Python syntax, setup and startup from outside the repository, upload and detection, compilation without a client-supplied level, interactive stepping, pipeline and register rendering, hazard overlays, sanitized browser messages, VCD delivery, and Surfer loading. Processor ISA conformance beyond the supplied programs and existing Scala tests was not re-certified. Multi-user load, malicious uploads, and public deployment were not tested because they are outside the trusted local teaching scope.
+
+\end{document}

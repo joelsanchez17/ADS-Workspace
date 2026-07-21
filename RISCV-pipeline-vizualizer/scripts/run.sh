@@ -18,5 +18,4 @@ if [ -x "$PROJECT_ROOT/.tools/sbt/bin/sbt" ]; then
 fi
 
 cd "$PROJECT_ROOT"
-echo "Opening the application at http://localhost:8080"
 exec "$PYTHON" web_demo.py "$@"
