@@ -1,0 +1,44 @@
+{
+  "base_git_revision": "02e87a0",
+  "capture_date": "2026-07-21",
+  "browser": "Chrome for Testing 149.0.7827.55 via Playwright 1.61.0",
+  "viewport": "1440x900 CSS pixels",
+  "screenshots": [
+    {
+      "file": "../screenshots/landing_interface.png",
+      "level": null,
+      "binary_file": null,
+      "cycle": null,
+      "demonstrates": "Current landing page, upload control, workflow, and prerequisites"
+    },
+    {
+      "file": "../screenshots/level2_forwarding_cycle_03.png",
+      "level": 2,
+      "binary_file": "infrastructure_template/system_tests/level_2/BinaryFile",
+      "cycle": 3,
+      "demonstrates": "Back-to-back arithmetic dependencies with both EX forwarding selectors active"
+    },
+    {
+      "file": "../screenshots/level3_branch_flush_cycle_07.png",
+      "level": 3,
+      "binary_file": "infrastructure_template/system_tests/level_3/BinaryFile",
+      "cycle": 7,
+      "demonstrates": "Taken BEQ in EX, target 0x20, and flush of younger IF/ID instructions"
+    },
+    {
+      "file": "../screenshots/level4_load_use_stall_cycle_41.png",
+      "level": 4,
+      "binary_file": "infrastructure_template/system_tests/level_4/BinaryFile",
+      "cycle": 41,
+      "demonstrates": "Load-use dependency with pc_write=0, if_stall=1, and id_stall=1"
+    },
+    {
+      "file": "../screenshots/waveform_view.png",
+      "level": 4,
+      "binary_file": "infrastructure_template/system_tests/level_4/BinaryFile",
+      "cycle": "VCD covers the 51-cycle headless run",
+      "demonstrates": "Bundled Surfer loading the generated VCD and displaying clock and io.dbg signals"
+    }
+  ],
+  "privacy_review": "Browser chrome, accounts, notifications, hostnames, and machine-specific paths are absent. Only localhost URLs appear where the waveform source is visible."
+}

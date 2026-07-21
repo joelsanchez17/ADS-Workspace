@@ -1,5 +1,8 @@
 # Dependencies
 
+.venv/
+.tools/
+node_modules/
 target/
 project/target/
 generated-src/

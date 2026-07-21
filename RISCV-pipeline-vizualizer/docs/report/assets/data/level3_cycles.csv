@@ -1,0 +1,17 @@
+cycle,core_done,if_pc,if_asm,id_asm,ex_asm,mem_asm,wb_asm,fwd_a,fwd_b,if_stall,id_stall,flush,wb_we,wb_rd,wb_wdata
+0,0,0x00000000,"addi x1, x0, 5",nop,unknown,unknown,unknown,0,0,0,0,0,0,0,0
+1,0,0x00000004,"addi x2, x0, 5","addi x1, x0, 5",nop,unknown,unknown,0,0,0,0,0,0,0,0
+2,0,0x00000008,"addi x3, x0, 7","addi x2, x0, 5","addi x1, x0, 5",nop,unknown,0,0,0,0,0,0,0,0
+3,0,0x0000000c,"beq x1, x3, +12","addi x3, x0, 7","addi x2, x0, 5","addi x1, x0, 5",nop,0,0,0,0,0,0,0,0
+4,0,0x00000010,"addi x4, x0, 1","beq x1, x3, +12","addi x3, x0, 7","addi x2, x0, 5","addi x1, x0, 5",0,0,0,0,0,1,1,5
+5,0,0x00000014,"beq x1, x2, +12","addi x4, x0, 1","beq x1, x3, +12","addi x3, x0, 7","addi x2, x0, 5",0,1,0,0,0,1,2,5
+6,0,0x00000018,"addi x5, x0, 99","beq x1, x2, +12","addi x4, x0, 1","beq x1, x3, +12","addi x3, x0, 7",0,0,0,0,0,1,3,7
+7,0,0x0000001c,"addi x6, x0, 98","addi x5, x0, 99","beq x1, x2, +12","addi x4, x0, 1","beq x1, x3, +12",0,0,0,0,1,0,12,12
+8,0,0x00000020,"addi x7, x0, 2",nop,nop,"beq x1, x2, +12","addi x4, x0, 1",0,0,0,0,0,1,4,1
+9,0,0x00000024,"bne x1, x2, +8","addi x7, x0, 2",nop,nop,"beq x1, x2, +12",0,0,0,0,0,0,12,10
+10,0,0x00000028,"addi x8, x0, 3","bne x1, x2, +8","addi x7, x0, 2",nop,nop,0,0,0,0,0,0,0,0
+11,0,0x0000002c,"bne x1, x3, +12","addi x8, x0, 3","bne x1, x2, +8","addi x7, x0, 2",nop,0,0,0,0,0,0,0,0
+12,0,0x00000030,"addi x9, x0, 97","bne x1, x3, +12","addi x8, x0, 3","bne x1, x2, +8","addi x7, x0, 2",0,0,0,0,0,1,7,2
+13,0,0x00000034,"addi x10, x0, 96","addi x9, x0, 97","bne x1, x3, +12","addi x8, x0, 3","bne x1, x2, +8",0,0,0,0,1,0,8,10
+14,0,0x00000038,"addi x11, x0, 4",nop,nop,"bne x1, x3, +12","addi x8, x0, 3",0,0,0,0,0,1,8,3
+15,1,0x0000003c,unknown,"addi x11, x0, 4",nop,nop,"bne x1, x3, +12",0,0,0,0,0,0,12,12

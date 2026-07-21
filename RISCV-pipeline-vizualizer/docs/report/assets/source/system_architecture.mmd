@@ -1,0 +1,40 @@
+flowchart LR
+    User([User]) --> Browser[Browser IDE<br/>editor, pipeline, registers, logs]
+
+    subgraph Web[Python ASGI application]
+        API[FastAPI<br/>HTTP routes]
+        WS[Socket.IO<br/>rooms and cycle control]
+        Detect[Upload filtering<br/>and level detection]
+        Enrich[Snapshot enrichment<br/>and history]
+        Bridge[ChiselBridge<br/>TCP client]
+    end
+
+    subgraph Session[Per-session execution]
+        Workspace[(Session workspace<br/>uploaded Scala + BinaryFile)]
+        SBT[SBT 1.9.7<br/>chiseltest]
+        Test[LivePipelineTest<br/>TCP server + VCD generation]
+        Core[Uploaded Chisel<br/>processor]
+        VCD[(VCD waveform)]
+    end
+
+    Browser -->|upload and compile<br/>HTTP/JSON| API
+    Browser <-->|commands, logs,<br/>processed snapshots| WS
+    API --> Detect --> Workspace
+    API -->|launch process| SBT
+    Workspace --> SBT --> Test --> Core
+    WS --> Enrich --> Bridge
+    Bridge <-->|line commands and<br/>JSON snapshots| Test
+    Enrich --> WS
+    Test --> VCD
+    API -->|serve /vcd/session| VCD
+    Browser --> Surfer[Bundled Surfer<br/>waveform viewer]
+    Surfer -->|load waveform| API
+
+    classDef user fill:#eef5ff,stroke:#2f6fad,color:#17202a;
+    classDef python fill:#e8f1fb,stroke:#4a90e2,color:#17202a;
+    classDef session fill:#eef8ee,stroke:#4f8a4f,color:#17202a;
+    classDef data fill:#fff5df,stroke:#b9852d,color:#17202a;
+    class User,Browser,Surfer user;
+    class API,WS,Detect,Enrich,Bridge python;
+    class SBT,Test,Core session;
+    class Workspace,VCD data;

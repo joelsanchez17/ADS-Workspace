@@ -1,0 +1,37 @@
+sequenceDiagram
+    autonumber
+    actor User
+    participant Browser
+    participant API as FastAPI
+    participant Session as Session workspace
+    participant SBT as SBT/chiseltest
+    participant Test as LivePipelineTest
+    participant Bridge as ChiselBridge
+    participant WS as Socket.IO
+
+    User->>Browser: Select project src folder
+    Browser->>API: POST /upload_and_detect (source map)
+    API->>API: Filter paths and detect level
+    API-->>Browser: Accepted sources, level, system BinaryFile
+    User->>Browser: Select test and Compile & Simulate
+    Browser->>WS: Join session room
+    Browser->>API: POST /compile
+    API->>Session: Copy scaffold, write Scala and BinaryFile
+    API->>SBT: Launch controlled live test suite
+    SBT->>Test: Elaborate and run Chisel tests
+    Test->>Test: Generate VCD (headless test)
+    Test-->>Bridge: Open session-specific TCP server
+    Bridge->>Test: Connect, consume initial snapshot, reset
+    Test-->>Bridge: Cycle-0 JSON snapshot
+    Bridge-->>API: Initial processor state
+    API-->>Browser: Compilation succeeded
+    Browser->>WS: init / step command
+    WS->>Bridge: step
+    Bridge->>Test: "step" line
+    Test->>Test: Advance clock one cycle
+    Test-->>Bridge: JSON snapshot
+    Bridge->>API: Raw snapshot
+    API->>API: Decode instructions and append history
+    API->>WS: Processed update + cycle log
+    WS-->>Browser: Session-room event
+    Browser->>Browser: Update SVG, registers, and console

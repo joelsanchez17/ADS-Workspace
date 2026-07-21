@@ -1,0 +1,14 @@
+cycle,core_done,if_pc,if_asm,id_asm,ex_asm,mem_asm,wb_asm,fwd_a,fwd_b,if_stall,id_stall,flush,wb_we,wb_rd,wb_wdata
+0,0,0x00000000,"addi x1, x0, 1",unknown,unknown,unknown,unknown,0,0,0,0,0,0,0,0
+1,0,0x00000004,"addi x2, x0, 2","addi x1, x0, 1",unknown,unknown,unknown,0,0,0,0,0,0,0,0
+2,0,0x00000008,"addi x3, x0, 3","addi x2, x0, 2","addi x1, x0, 1",unknown,unknown,0,0,0,0,0,0,0,0
+3,0,0x0000000c,"addi x4, x0, 4","addi x3, x0, 3","addi x2, x0, 2","addi x1, x0, 1",unknown,0,0,0,0,0,0,0,0
+4,0,0x00000010,"add x5, x0, x0","addi x4, x0, 4","addi x3, x0, 3","addi x2, x0, 2","addi x1, x0, 1",0,0,0,0,0,1,1,1
+5,0,0x00000014,"sub x6, x0, x0","add x5, x0, x0","addi x4, x0, 4","addi x3, x0, 3","addi x2, x0, 2",0,0,0,0,0,1,2,2
+6,0,0x00000018,"xor x7, x0, x0","sub x6, x0, x0","add x5, x0, x0","addi x4, x0, 4","addi x3, x0, 3",0,0,0,0,0,1,3,3
+7,0,0x0000001c,"or x8, x0, x0","xor x7, x0, x0","sub x6, x0, x0","add x5, x0, x0","addi x4, x0, 4",0,0,0,0,0,1,4,4
+8,0,0x00000020,"and x9, x0, x0","or x8, x0, x0","xor x7, x0, x0","sub x6, x0, x0","add x5, x0, x0",0,0,0,0,0,1,5,0
+9,0,0x00000024,"xori x10, x0, 15","and x9, x0, x0","or x8, x0, x0","xor x7, x0, x0","sub x6, x0, x0",0,0,0,0,0,1,6,0
+10,0,0x00000028,"ori x11, x0, 85","xori x10, x0, 15","and x9, x0, x0","or x8, x0, x0","xor x7, x0, x0",0,0,0,0,0,1,7,0
+11,0,0x0000002c,"andi x12, x0, 15","ori x11, x0, 85","xori x10, x0, 15","and x9, x0, x0","or x8, x0, x0",0,0,0,0,0,1,8,0
+12,1,0x00000030,unknown,"andi x12, x0, 15","ori x11, x0, 85","xori x10, x0, 15","and x9, x0, x0",0,0,0,0,0,1,9,0

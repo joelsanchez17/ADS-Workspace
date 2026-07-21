@@ -14,8 +14,13 @@ import socket
 import asyncio
 import re
 import signal
+from pathlib import Path
 from pydantic import BaseModel
 from typing import Dict, Optional
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+STATIC_DIR = PROJECT_ROOT / "web_visualizer" / "static"
+TEMPLATE_DIR = PROJECT_ROOT / "web_visualizer" / "templates"
 
 
 active_bridges = {}  # Stores bridges mapped by Session ID
@@ -31,8 +36,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.mount("/static", StaticFiles(directory="web_visualizer/static"), name="static")
-app.mount("/branding", StaticFiles(directory="web_visualizer/templates/branding"), name="branding")
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+app.mount("/branding", StaticFiles(directory=TEMPLATE_DIR / "branding"), name="branding")
 
 @app.get("/vcd/{session_id}")
 async def get_vcd(session_id: str):
@@ -290,7 +295,7 @@ def level_detection_reason(scala_files: Dict[str, str], level: int) -> str:
 
 @app.get("/")
 async def read_index():
-    return FileResponse('web_visualizer/templates/index.html')
+    return FileResponse(TEMPLATE_DIR / "index.html")
 
 # New from here
 class CompileRequest(BaseModel):

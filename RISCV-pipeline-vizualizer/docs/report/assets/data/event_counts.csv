@@ -1,0 +1,5 @@
+level,cycles_observed,forwarding_cycles,stall_cycles,flush_cycles
+1,12,0,0,0
+2,12,10,0,0
+3,15,1,0,2
+4,51,23,4,6

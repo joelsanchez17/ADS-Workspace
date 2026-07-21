@@ -1,0 +1,102 @@
+[
+  {
+    "level": 1,
+    "session_id": "sess_validation_l1",
+    "detected_level": 1,
+    "detection_message": "Detected Task 3 / Level 1 because no ForwardingUnit/HazardDetection/MemController/Branch file or Task 5 branch markers were found.",
+    "cycles_observed": 12,
+    "termination_observed": true,
+    "forwarding_cycles": 0,
+    "stall_cycles": 0,
+    "flush_cycles": 0,
+    "last_log_lines": [
+      "\u25b6 Cycle 1  | IF: addi x2, x0, 2  | EX: unknown         (ALU: 0x0)",
+      "\u25b6 Cycle 2  | IF: addi x3, x0, 3  | EX: addi x1, x0, 1  (ALU: 0x1)",
+      "\u25b6 Cycle 3  | IF: addi x4, x0, 4  | EX: addi x2, x0, 2  (ALU: 0x2)",
+      "\u25b6 Cycle 4  | IF: add x5, x0, x0  | EX: addi x3, x0, 3  (ALU: 0x3) | WB: x1 \u2190 0x1",
+      "\u25b6 Cycle 5  | IF: sub x6, x0, x0  | EX: addi x4, x0, 4  (ALU: 0x4) | WB: x2 \u2190 0x2",
+      "\u25b6 Cycle 6  | IF: xor x7, x0, x0  | EX: add x5, x0, x0  (ALU: 0x0) | WB: x3 \u2190 0x3",
+      "\u25b6 Cycle 7  | IF: or x8, x0, x0   | EX: sub x6, x0, x0  (ALU: 0x0) | WB: x4 \u2190 0x4",
+      "\u25b6 Cycle 8  | IF: and x9, x0, x0  | EX: xor x7, x0, x0  (ALU: 0x0) | WB: x5 \u2190 0x0",
+      "\u25b6 Cycle 9  | IF: xori x10, x0, 15 | EX: or x8, x0, x0   (ALU: 0x0) | WB: x6 \u2190 0x0",
+      "\u25b6 Cycle 10 | IF: ori x11, x0, 85 | EX: and x9, x0, x0  (ALU: 0x0) | WB: x7 \u2190 0x0",
+      "\u25b6 Cycle 11 | IF: andi x12, x0, 15 | EX: xori x10, x0, 15 (ALU: 0xF) | WB: x8 \u2190 0x0",
+      "\u25b6 Cycle 12 | IF: unknown         | EX: ori x11, x0, 85 (ALU: 0x55) | WB: x9 \u2190 0x0"
+    ]
+  },
+  {
+    "level": 2,
+    "session_id": "sess_validation_l2",
+    "detected_level": 2,
+    "detection_message": "Detected Task 4 / Level 2 because ForwardingUnit.scala was found and no Task 5 branch markers were present.",
+    "cycles_observed": 12,
+    "termination_observed": true,
+    "forwarding_cycles": 10,
+    "stall_cycles": 0,
+    "flush_cycles": 0,
+    "last_log_lines": [
+      "\u25b6 Cycle 1  | IF: add x2, x1, x1  | EX: unknown         (ALU: 0x0)",
+      "\u25b6 Cycle 2  | IF: add x3, x2, x1  | EX: addi x1, x0, 5  (ALU: 0x5)",
+      "\u25b6 Cycle 3  | IF: addi x4, x3, 7  | EX: add x2, x1, x1  (ALU: 0xA)",
+      "\u25b6 Cycle 4  | IF: add x5, x4, x2  | EX: add x3, x2, x1  (ALU: 0xF) | WB: x1 \u2190 0x5",
+      "\u25b6 Cycle 5  | IF: sub x6, x5, x1  | EX: addi x4, x3, 7  (ALU: 0x16) | WB: x2 \u2190 0xA",
+      "\u25b6 Cycle 6  | IF: xor x7, x6, x2  | EX: add x5, x4, x2  (ALU: 0x20) | WB: x3 \u2190 0xF",
+      "\u25b6 Cycle 7  | IF: or x8, x7, x3   | EX: sub x6, x5, x1  (ALU: 0x1B) | WB: x4 \u2190 0x16",
+      "\u25b6 Cycle 8  | IF: and x9, x8, x4  | EX: xor x7, x6, x2  (ALU: 0x11) | WB: x5 \u2190 0x20",
+      "\u25b6 Cycle 9  | IF: xori x10, x9, 15 | EX: or x8, x7, x3   (ALU: 0x1F) | WB: x6 \u2190 0x1B",
+      "\u25b6 Cycle 10 | IF: ori x11, x10, 85 | EX: and x9, x8, x4  (ALU: 0x16) | WB: x7 \u2190 0x11",
+      "\u25b6 Cycle 11 | IF: andi x12, x11, 15 | EX: xori x10, x9, 15 (ALU: 0x19) | WB: x8 \u2190 0x1F",
+      "\u25b6 Cycle 12 | IF: unknown         | EX: ori x11, x10, 85 (ALU: 0x5D) | WB: x9 \u2190 0x16"
+    ]
+  },
+  {
+    "level": 3,
+    "session_id": "sess_validation_l3",
+    "detected_level": 3,
+    "detection_message": "Detected Task 5 / Level 3 because branch/jump markers were found: immB, immJ, isBEQ, isBGE, isBGEU, isBLT, ....",
+    "cycles_observed": 15,
+    "termination_observed": true,
+    "forwarding_cycles": 1,
+    "stall_cycles": 0,
+    "flush_cycles": 2,
+    "last_log_lines": [
+      "\u25b6 Cycle 4  | IF: addi x4, x0, 1  | EX: addi x3, x0, 7  (ALU: 0x7) | WB: x1 \u2190 0x5",
+      "\u25b6 Cycle 5  | IF: beq x1, x2, +12 | EX: beq x1, x3, +12 (ALU: 0xC) | WB: x2 \u2190 0x5",
+      "\u25b6 Cycle 6  | IF: addi x5, x0, 99 | EX: addi x4, x0, 1  (ALU: 0x1) | WB: x3 \u2190 0x7",
+      "\u25b6 Cycle 7  | IF: addi x6, x0, 98 | EX: beq x1, x2, +12 (ALU: 0xA)",
+      "\u25b6 Cycle 8  | IF: addi x7, x0, 2  | EX: nop             (ALU: 0x0) | WB: x4 \u2190 0x1",
+      "\u25b6 Cycle 9  | IF: bne x1, x2, +8  | EX: nop             (ALU: 0x0)",
+      "\u25b6 Cycle 10 | IF: addi x8, x0, 3  | EX: addi x7, x0, 2  (ALU: 0x2)",
+      "\u25b6 Cycle 11 | IF: bne x1, x3, +12 | EX: bne x1, x2, +8  (ALU: 0xA)",
+      "\u25b6 Cycle 12 | IF: addi x9, x0, 97 | EX: addi x8, x0, 3  (ALU: 0x3) | WB: x7 \u2190 0x2",
+      "\u25b6 Cycle 13 | IF: addi x10, x0, 96 | EX: bne x1, x3, +12 (ALU: 0xC)",
+      "\u25b6 Cycle 14 | IF: addi x11, x0, 4 | EX: nop             (ALU: 0x0) | WB: x8 \u2190 0x3",
+      "\u25b6 Cycle 15 | IF: unknown         | EX: nop             (ALU: 0x0)"
+    ]
+  },
+  {
+    "level": 4,
+    "session_id": "sess_validation_l4",
+    "detected_level": 4,
+    "detection_message": "Detected Level 4 because Branch.scala, HazardDetection.scala, MemController.scala was found.",
+    "cycles_observed": 51,
+    "termination_observed": true,
+    "forwarding_cycles": 23,
+    "stall_cycles": 4,
+    "flush_cycles": 6,
+    "last_log_lines": [
+      "\u25b6 Cycle 40 | IF: add x27, x26, x25 | EX: sw x25, +12(x0) (ALU: 0xC)",
+      "\u25b6 Cycle 41 | IF: jal x0, +12     | EX: lw x26, +12(x0) (ALU: 0xC) | MEM: [0xC] \u2190 0xB6 | WB: x25 \u2190 0xB6 | \u26a0\ufe0f STALL",
+      "\u25b6 Cycle 42 | IF: jal x0, +12     | EX: nop             (ALU: 0xFFFFFFFF)",
+      "\u25b6 Cycle 43 | IF: addi x28, x0, 28 | EX: add x27, x26, x25 (ALU: 0x16C) | MEM: [0xFFFFFFFF] \u2190 0x0 | WB: x26 \u2190 0xB6",
+      "\u25b6 Cycle 44 | IF: addi x29, x0, 29 | EX: jal x0, +12     (ALU: 0x90)",
+      "\u25b6 Cycle 45 | IF: addi x30, x0, 30 | EX: nop             (ALU: 0xFFFFFFFF) | MEM: [0x90] \u2190 0x74 | WB: x27 \u2190 0x16C",
+      "\u25b6 Cycle 46 | IF: addi x30, x0, 30 | EX: nop             (ALU: 0xFFFFFFFF) | MEM: [0xFFFFFFFF] \u2190 0x0",
+      "\u25b6 Cycle 47 | IF: add x31, x30, x1 | EX: nop             (ALU: 0x0)",
+      "\u25b6 Cycle 48 | IF: sw x31, +16(x0) | EX: addi x30, x0, 30 (ALU: 0x1E)",
+      "\u25b6 Cycle 49 | IF: unknown         | EX: add x31, x30, x1 (ALU: 0x23) | MEM: [0x1E] \u2190 0x0",
+      "\u25b6 Cycle 50 | IF: unknown         | EX: sw x31, +16(x0) (ALU: 0x10) | MEM: [0x23] \u2190 0x5 | WB: x30 \u2190 0x1E",
+      "\u25b6 Cycle 51 | IF: unknown         | EX: unknown         (ALU: 0xFFFFFFFF) | MEM: [0x10] \u2190 0x23 | WB: x31 \u2190 0x23"
+    ]
+  }
+]
