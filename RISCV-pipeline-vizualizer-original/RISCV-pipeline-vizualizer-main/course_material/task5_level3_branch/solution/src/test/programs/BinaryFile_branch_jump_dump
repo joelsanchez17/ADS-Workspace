@@ -1,0 +1,56 @@
+00500093 // addi	x1,x0,5
+00500113 // addi	x2,x0,5
+00700193 // addi	x3,x0,7
+00208663 // beq	x1,x2,18 <beq_taken>
+06f00513 // addi	x10,x0,111
+07000513 // addi	x10,x0,112
+00100213 // addi	x4,x0,1
+00309663 // bne	x1,x3,28 <bne_taken>
+07100513 // addi	x10,x0,113
+07200513 // addi	x10,x0,114
+00200293 // addi	x5,x0,2
+0030c663 // blt	x1,x3,38 <blt_taken>
+07300513 // addi	x10,x0,115
+07400513 // addi	x10,x0,116
+00300313 // addi	x6,x0,3
+0011d663 // bge	x3,x1,48 <bge_taken>
+07500513 // addi	x10,x0,117
+07600513 // addi	x10,x0,118
+00400393 // addi	x7,x0,4
+fff00413 // addi	x8,x0,-1
+0080e663 // bltu	x1,x8,5c <bltu_taken>
+07700513 // addi	x10,x0,119
+07800513 // addi	x10,x0,120
+00500493 // addi	x9,x0,5
+00147663 // bgeu	x8,x1,6c <bgeu_taken>
+07900513 // addi	x10,x0,121
+07a00513 // addi	x10,x0,122
+00600593 // addi	x11,x0,6
+00308263 // beq	x1,x3,74 <not_taken_beq>
+00700613 // addi	x12,x0,7
+00209263 // bne	x1,x2,7c <not_taken_bne>
+00800693 // addi	x13,x0,8
+0011c263 // blt	x3,x1,84 <not_taken_blt>
+00900713 // addi	x14,x0,9
+0030d263 // bge	x1,x3,8c <not_taken_bge>
+00a00793 // addi	x15,x0,10
+00146263 // bltu	x8,x1,94 <not_taken_bltu>
+00b00813 // addi	x16,x0,11
+0080f263 // bgeu	x1,x8,9c <not_taken_bgeu>
+00c00893 // addi	x17,x0,12
+00c0096f // jal	x18,ac <jal_target>
+07b00513 // addi	x10,x0,123
+07c00513 // addi	x10,x0,124
+00d00993 // addi	x19,x0,13
+0c000a13 // addi	x20,x0,192
+000a0ae7 // jalr	x21,0(x20)
+07d00513 // addi	x10,x0,125
+07e00513 // addi	x10,x0,126
+00e00b13 // addi	x22,x0,14
+00c0006f // jal	x0,d0 <final_target>
+07f00513 // addi	x10,x0,127
+08000513 // addi	x10,x0,128
+00f00b93 // addi	x23,x0,15
+fff00c13 // addi	x24,x0,-1
+001c0c93 // addi	x25,x24,1
+00000d13 // addi	x26,x0,0

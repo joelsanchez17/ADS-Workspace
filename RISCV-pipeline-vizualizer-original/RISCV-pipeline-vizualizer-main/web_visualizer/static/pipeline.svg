@@ -1,0 +1,138 @@
+<svg width="960" height="450" viewBox="0 0 960 450" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+        <marker id="arrow" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto" markerUnits="strokeWidth">
+            <path d="M0,0 L0,6 L6,3 z" fill="#555" />
+        </marker>
+        <marker id="arrow-blue" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto" markerUnits="strokeWidth">
+            <path d="M0,0 L0,6 L6,3 z" fill="#569cd6" />
+        </marker>
+
+        <marker id="arrow-green" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto" markerUnits="strokeWidth">
+            <path d="M0,0 L0,6 L6,3 z" fill="#98c379" />
+        </marker>
+
+        <marker id="arrow-purple" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto" markerUnits="strokeWidth">
+            <path d="M0,0 L0,6 L6,3 z" fill="#c678dd" />
+        </marker>
+
+        <linearGradient id="barrierGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" style="stop-color:#2d2d30;stop-opacity:1" />
+            <stop offset="50%" style="stop-color:#3e3e42;stop-opacity:1" />
+            <stop offset="100%" style="stop-color:#2d2d30;stop-opacity:1" />
+        </linearGradient>
+    </defs>
+
+    <rect width="960" height="450" fill="#1e1e1e"/>
+
+    <g font-family="monospace" font-size="11" fill="#888" text-anchor="middle">
+        <rect x="160" y="80" width="10" height="250" fill="url(#barrierGrad)" stroke="#555" stroke-width="1"/>
+        <text x="165" y="70">IF/ID</text>
+
+        <rect x="345" y="80" width="10" height="250" fill="url(#barrierGrad)" stroke="#555" stroke-width="1"/>
+        <text x="348.5" y="70">ID/EX</text>
+
+        <rect x="530" y="80" width="10" height="250" fill="url(#barrierGrad)" stroke="#555" stroke-width="1"/>
+        <text x="536.5" y="70">EX/MEM</text>
+
+        <rect x="715" y="80" width="10" height="250" fill="url(#barrierGrad)" stroke="#555" stroke-width="1"/>
+        <text x="720.5" y="70">MEM/WB</text>
+    </g>
+
+    <g id="group-if" transform="translate(20, 135)">
+        <rect id="stage-if" width="130" height="120" rx="4" fill="#252526" stroke="#555" stroke-width="2"/>
+        <text x="65" y="20" text-anchor="middle" font-weight="bold" font-size="14" fill="#ddd">IF Fetch</text>
+        <text id="txt-pc-if" x="65" y="45" text-anchor="middle" font-family="monospace" font-size="11" fill="#bbb">PC: --</text>
+        <text id="txt-asm-if" x="65" y="65" text-anchor="middle" font-family="monospace" font-size="11" fill="#4ec9b0">nop</text>
+        <text id="txt-hex-if" x="65" y="80" text-anchor="middle" font-family="monospace" font-size="9" fill="#4caf50">0x00000000</text>
+
+        <rect id="badge-stall-if" x="35" y="-14" width="60" height="18" rx="3" fill="#e5c07b" opacity="0"/>
+        <text id="txt-stall-if" x="65" y="-1" text-anchor="middle" font-weight="bold" font-family="sans-serif" font-size="10" fill="#21252b" opacity="0">STALL</text>
+        <rect id="badge-flush-if" x="35" y="-14" width="60" height="18" rx="3" fill="#e06c75" opacity="0"/>
+        <text id="txt-flush-if" x="65" y="-1" text-anchor="middle" font-weight="bold" font-family="sans-serif" font-size="10" fill="#21252b" opacity="0">FLUSH</text>
+    </g>
+
+    <g id="group-id" transform="translate(195, 135)">
+        <rect id="stage-id" width="130" height="120" rx="4" fill="#252526" stroke="#555" stroke-width="2"/>
+        <text x="65" y="20" text-anchor="middle" font-weight="bold" font-size="14"  fill="#ddd">ID Decode</text>
+        <text id="txt-pc-id" x="65" y="35" text-anchor="middle" font-family="monospace" font-size="10" fill="#666">x00</text>
+        <text id="txt-asm-id" x="65" y="50" text-anchor="middle" font-family="monospace" font-size="11" fill="#4ec9b0">nop</text>
+        <text id="txt-hex-id" x="65" y="62" text-anchor="middle" font-family="monospace" font-size="9" fill="#4caf50">0x00000000</text>
+
+        <rect id="badge-stall-id" x="35" y="-14" width="60" height="18" rx="3" fill="#e5c07b" opacity="0"/>
+        <text id="txt-stall-id" x="65" y="-1" text-anchor="middle" font-weight="bold" font-family="sans-serif" font-size="10" fill="#21252b" opacity="0">STALL</text>
+        <rect id="badge-flush-id" x="35" y="-14" width="60" height="18" rx="3" fill="#e06c75" opacity="0"/>
+        <text id="txt-flush-id" x="65" y="-1" text-anchor="middle" font-weight="bold" font-family="sans-serif" font-size="10" fill="#21252b" opacity="0">FLUSH</text>
+
+        <line x1="10" y1="65" x2="120" y2="65" stroke="#444" />
+        <text id="txt-rs1-id" x="10" y="80" font-family="monospace" font-size="9" fill="#ccc">rs1: --</text>
+        <text id="txt-rs2-id" x="70" y="80" font-family="monospace" font-size="9" fill="#ccc">rs2: --</text>
+        <text id="txt-rd-id" x="10" y="94" font-family="monospace" font-size="9" fill="#ccc">->rd: --</text>
+
+        <g id="group-regfile" transform="translate(0, 135)">
+            <rect id="regfile-box" width="130" height="50" rx="4" fill="#21252b" stroke="#4b5363" stroke-width="2"/>
+            <text id="txt-rf-title" x="65" y="20" text-anchor="middle" font-weight="bold" fill="#d7dae0" font-family="sans-serif" font-size="10">Register File</text>
+            <text id="txt-rf-status" x="65" y="35" text-anchor="middle" font-size="9" fill="#8b929e">Reading</text>
+        </g>
+    </g>
+
+    <g id="group-ex" transform="translate(380, 135)">
+        <rect id="stage-ex" width="130" height="120" rx="4" fill="#252526" stroke="#555" stroke-width="2"/>
+        <text x="65" y="20" text-anchor="middle" font-weight="bold" font-size="14" fill="#ddd">EX Execute</text>
+        <text id="txt-pc-ex" x="65" y="35" text-anchor="middle" font-family="monospace" font-size="10" fill="#666">x00</text>
+        <text id="txt-asm-ex" x="65" y="50" text-anchor="middle" font-family="monospace" font-size="11" fill="#4ec9b0">nop</text>
+        <text id="txt-hex-ex" x="65" y="62" text-anchor="middle" font-family="monospace" font-size="9" fill="#4caf50">0x00000000</text>
+
+        <line x1="10" y1="65" x2="120" y2="65" stroke="#444" />
+        <text id="txt-op-a" x="10" y="80" font-family="monospace" font-size="9" fill="#aaa">A: --</text>
+        <text id="txt-op-b" x="10" y="92" font-family="monospace" font-size="9" fill="#aaa">B: --</text>
+        <rect x="10" y="100" width="110" height="18" rx="2" fill="#333" stroke="none"/>
+        <text id="txt-alu-ex" x="65" y="113" text-anchor="middle" font-family="monospace" font-size="10" font-weight="bold" fill="#fff">Res: 0x0</text>
+    </g>
+
+    <g id="group-mem" transform="translate(565, 135)">
+        <rect id="stage-mem" width="130" height="120" rx="4" fill="#252526" stroke="#555" stroke-width="2"/>
+        <text x="65" y="20" text-anchor="middle" font-weight="bold" font-size="14"  fill="#ddd">MEM Memory</text>
+        <text id="txt-pc-mem" x="65" y="35" text-anchor="middle" font-family="monospace" font-size="10" fill="#666">x00</text>
+        <text id="txt-asm-mem" x="65" y="50" text-anchor="middle" font-family="monospace" font-size="11" fill="#4ec9b0">nop</text>
+        <text id="txt-hex-mem" x="65" y="62" text-anchor="middle" font-family="monospace" font-size="9" fill="#4caf50">0x00000000</text>
+
+        <line x1="10" y1="65" x2="120" y2="65" stroke="#444" />
+        <rect x="20" y="75" width="90" height="35" fill="#222" stroke="#444" stroke-width="1"/>
+        <text id="txt-mem-status" x="65" y="95" text-anchor="middle" font-family="monospace" font-size="10" fill="#888">Idle</text>
+    </g>
+
+    <g id="group-wb" transform="translate(750, 135)">
+        <rect id="stage-wb" width="130" height="120" rx="4" fill="#252526" stroke="#555" stroke-width="2"/>
+        <text x="65" y="20" text-anchor="middle" font-weight="bold" font-size="14" fill="#ddd">WB Writeback</text>
+        <text id="txt-pc-wb" x="65" y="35" text-anchor="middle" font-family="monospace" font-size="10" fill="#666">x00</text>
+        <text id="txt-asm-wb" x="65" y="50" text-anchor="middle" font-family="monospace" font-size="11" fill="#4ec9b0">nop</text>
+        <text id="txt-hex-wb" x="65" y="62" text-anchor="middle" font-family="monospace" font-size="9" fill="#4caf50">0x00000000</text>
+
+        <line x1="10" y1="65" x2="120" y2="65" stroke="#444" />
+        <text id="txt-wb-reg" x="65" y="85" text-anchor="middle" font-family="monospace" font-size="11" fill="#4ec9b0">x0 = 0x0</text>
+    </g>
+
+    <path d="M 150 185 L 192 185" stroke="#555" stroke-width="3" marker-end="url(#arrow)"/>
+    <path d="M 325 185 L 377.5 185" stroke="#555" stroke-width="3" marker-end="url(#arrow)"/>
+    <path d="M 510 185 L 562.5 185" stroke="#555" stroke-width="3" marker-end="url(#arrow)"/>
+    <path d="M 695 185 L 748.5 185" stroke="#555" stroke-width="3" marker-end="url(#arrow)"/>
+
+    <rect id="box-fwd-unit" x="395" y="20" width="100" height="40" rx="5" ry="5" fill="#333" stroke="#fff" stroke-width="2"/>
+    <text id="txt-fwd-status" x="445" y="45" fill="white" font-family="monospace" font-size="10" text-anchor="middle" font-weight="bold">FWD UNIT</text>
+
+    <path id="wire-mem-fwd" d="M 543 105 L  630 105 L 630 50 L 497 50 " fill="none" stroke="#666" stroke-width="2" stroke-dasharray="4,4" marker-end="url(#arrow)"/>
+    <path id="wire-wb-fwd" d="M 728 105 L 810 105 L 810 30 L 497 30" fill="none" stroke="#666" stroke-width="2" stroke-dasharray="4,4" marker-end="url(#arrow)"/>
+
+    <path id="wire-fwd-a" d="M 415 60 L 415 135" fill="none" stroke="#666" stroke-width="2" marker-end="url(#arrow)"/>
+    <path id="wire-fwd-b" d="M 475 60 L 475 135" fill="none" stroke="#666" stroke-width="2" marker-end="url(#arrow)"/>
+
+    <path id="wire-wb-back" d="M 810 255 L 810 360 L 260 360 L 260 320"
+          fill="none" stroke="#444" stroke-width="2" stroke-dasharray="5,5" marker-end="url(#arrow)"/>
+
+    <path id="wire-branch" d="M 445 255 L 445 400 L 85 400 L 85 255"
+          fill="none" stroke="#444" stroke-width="2" stroke-dasharray="5,5" marker-end="url(#arrow)"/>
+
+    <text id="txt-branch-target" x="260" y="390" text-anchor="middle"
+          font-family="monospace" font-size="11" fill="#555" font-weight="bold"></text>
+
+</svg>

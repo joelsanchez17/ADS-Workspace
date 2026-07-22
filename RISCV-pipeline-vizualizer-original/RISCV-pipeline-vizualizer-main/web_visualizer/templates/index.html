@@ -1,0 +1,1675 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>RISC-V Cloud IDE</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
+    <script>
+        const socket = io();
+    </script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.36.1/min/vs/loader.min.js"></script>
+
+    <style>
+        /* === PROFESSIONAL ACADEMIC EDA THEME === */
+        :root {
+            --bg-base: #181a1f;       /* Deep matte slate for main background */
+            --bg-panel: #21252b;      /* Slightly lighter for panels */
+            --bg-darker: #141518;     /* Inset areas like terminal */
+            --border: #353b45;        /* Soft structured borders */
+            --accent: #4A90E2;        /* Academic scientific blue */
+            --accent-hover: #357ABD;
+            --text-main: #d7dae0;     /* Soft white for readability */
+            --text-muted: #8b929e;
+            --tab-active: #282c34;
+            --tab-inactive: #1e2227;
+            --success: #98c379;       /* Matte green for data writes */
+            --danger: #e06c75;
+            --warning: #e5c07b;
+        }
+
+        /* Native Scrollbars */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: var(--bg-darker); }
+        ::-webkit-scrollbar-thumb { background: #4b5363; border-radius: 0px; }
+        ::-webkit-scrollbar-thumb:hover { background: #5c6370; }
+
+        body {
+            margin: 0; padding: 0; height: 100vh; display: flex; flex-direction: column; overflow: hidden;
+            background: var(--bg-base); color: var(--text-main);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            border-top: 3px solid var(--accent); /* Institutional top accent line */
+        }
+
+        /* --- TOOLBAR --- */
+        .toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 7px 18px;
+            background: var(--bg-panel);
+            border-bottom: 1px solid var(--border);
+            z-index: 10;
+            min-height: 58px;
+        }
+        .brand { font-size: 15px; font-weight: 600; color: #abb2bf; letter-spacing: 1px; }
+        .brand span { color: var(--accent); font-weight: 700; }
+
+        .controls { display: flex; gap: 8px; }
+        .btn {
+            background: var(--bg-base); color: var(--text-main); border: 1px solid var(--border);
+            padding: 5px 12px; cursor: pointer; border-radius: 3px; font-weight: 500;
+            font-size: 12px; transition: all 0.15s ease; display: flex; align-items: center; gap: 6px;
+        }
+        .btn:hover { background: #2c313a; border-color: #abb2bf; color: #fff; }
+        .btn-compile { background: var(--accent); border-color: var(--accent); color: #fff; }
+        .btn-compile:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+
+        /* --- ACADEMIC BRANDING HEADER --- */
+        .brand-area {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            min-width: 0;
+        }
+
+        .logo-group {
+            display: flex;
+            align-items: center;
+            padding-right: 14px;
+            border-right: 1px solid var(--border);
+        }
+        .combined-logo {
+            display: block;
+            width: 190px;
+            height: 46px;
+            object-fit: contain;
+            background: #ffffff;
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 4px;
+            padding: 3px 6px;
+        }
+
+        .brand-text {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            line-height: 1.15;
+        }
+
+        .lab-name {
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 1.4px;
+            text-transform: uppercase;
+            color: var(--accent);
+            margin-bottom: 3px;
+        }
+
+        .tool-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        .tool-title span {
+            color: var(--accent);
+        }
+
+        .tool-subtitle {
+            margin-top: 2px;
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        /* --- WORKSPACE --- */
+        .workspace { display: flex; flex: 1; overflow: hidden; }
+
+        /* Left Sidebar: File Tree */
+        .sidebar-tree { width: 250px; background: var(--bg-panel); border-right: 1px solid var(--border); display: flex; flex-direction: column; z-index: 5; }
+        .tree-header { padding: 10px 15px; font-size: 10px; font-weight: 700; letter-spacing: 1.5px; color: var(--text-muted); text-transform: uppercase; border-bottom: 1px solid var(--border); background: var(--bg-darker); }
+        .tree-content { flex: 1; overflow-y: auto; padding-top: 8px; padding-bottom: 20px; }
+
+        .tree-item { padding: 4px 15px; cursor: pointer; font-size: 13px; display: flex; align-items: center; user-select: none; border-left: 3px solid transparent; color: #abb2bf; }
+        .tree-item:hover { background: #2c313a; }
+        .tree-item.active { background: #282c34; color: #fff; border-left: 3px solid var(--accent); }
+        .indent-1 { padding-left: 25px; }
+        .indent-2 { padding-left: 35px; }
+        .indent-3 { padding-left: 45px; }
+        .icon { width: 20px; text-align: center; margin-right: 6px; font-size: 13px; opacity: 0.8; }
+
+        /* Center Main Area */
+        .main-area { flex: 1; display: flex; flex-direction: column; background: var(--bg-base); min-width: 0; }
+
+        /* Tabs Bar */
+        .editor-tabs { display: flex; background: var(--bg-darker); border-bottom: 1px solid var(--border); align-items: center; }
+        .tab {
+            padding: 8px 20px; background: var(--tab-inactive); border: none; color: var(--text-muted);
+            cursor: pointer; font-size: 12px; font-weight: 600; display: flex; align-items: center;
+            border-right: 1px solid var(--border); border-top: 2px solid transparent; transition: all 0.1s;
+        }
+        .tab.active { background: var(--tab-active); color: var(--text-main); border-top: 2px solid var(--accent); }
+        .tab:hover:not(.active) { background: #2c313a; color: #ddd; }
+
+        /* TELEMETRY CYCLE BADGE */
+        .telemetry-group { display: flex; align-items: center; padding-right: 15px; gap: 10px; }
+
+        .cycle-badge {
+            display: flex; align-items: stretch; background: var(--bg-panel);
+            border: 1px solid var(--border); border-radius: 3px; overflow: hidden;
+            font-family: 'SFMono-Regular', Consolas, 'Courier New', monospace; font-size: 12px;
+        }
+        .cycle-label { background: var(--bg-darker); color: var(--text-muted); padding: 4px 10px; font-weight: 600; text-transform: uppercase; font-size: 10px; display: flex; align-items: center; border-right: 1px solid var(--border); }
+        .cycle-value { padding: 4px 12px; color: var(--accent); font-weight: bold; background: #1e2227; }
+
+        /* Dynamic Containers */
+        .content-container { flex: 1; display: flex; position: relative; }
+        #monaco-container { width: 100%; height: 100%; position: absolute; top: 0; left: 0; }
+        #viz-container { width: 100%; height: 100%; display: none; background: var(--bg-base); }
+
+        /* Visualizer Layout */
+        .viz-svg { flex: 2; padding: 20px; display: flex; justify-content: center; align-items: center; overflow: auto; background: var(--bg-base); }
+        .viz-sidebar { flex: 1; border-left: 1px solid var(--border); background: var(--bg-panel); display: flex; flex-direction: column; max-width: 400px; z-index: 5; }
+
+        /* Sidebar Panels (Toggles & Regs) */
+        .panel-header { background: var(--bg-darker); padding: 8px 15px; font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid var(--border); border-top: 1px solid var(--border); }
+        .viz-sidebar .panel-header:first-child { border-top: none; }
+
+        .toggles-container { padding: 12px 15px; font-size: 12px; display: flex; gap: 20px; background: var(--bg-panel); }
+        .toggles-container label { display: flex; align-items: center; gap: 8px; cursor: pointer; color: #abb2bf; }
+        .toggles-container input[type="checkbox"] { accent-color: var(--accent); }
+
+        /* TABULAR REGISTER DATA GRID */
+        .reg-grid-container { flex: 1; overflow-y: auto; padding: 12px; background: var(--bg-panel); }
+        .reg-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: 3px; }
+
+        .reg-box {
+            background: var(--bg-panel); padding: 6px 4px; text-align: center; display: flex; flex-direction: column;
+            justify-content: center; align-items: center; position: relative;
+        }
+        .reg-name { font-size: 10px; color: var(--text-muted); font-family: 'SFMono-Regular', Consolas, monospace; margin-bottom: 2px; }
+        .reg-val { font-size: 12px; font-family: 'SFMono-Regular', Consolas, monospace; color: var(--text-main); letter-spacing: 0.5px; }
+
+        .active-write {
+            background: rgba(152, 195, 121, 0.1);
+        }
+        .active-write::after {
+            content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+            border: 1px solid var(--success); pointer-events: none;
+        }
+
+        /* --- TERMINAL --- */
+        .terminal-panel { height: 25%; background: var(--bg-darker); border-top: 1px solid var(--border); display: flex; flex-direction: column; z-index: 10; transition: height 0.2s ease; }
+        .terminal-panel.collapsed { height: 32px; }
+        .terminal-panel.collapsed #console-output { display: none; }
+
+        .terminal-header { background: var(--bg-panel); padding: 5px 15px; font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); font-weight: 700; height: 21px; }
+        .terminal-header button { background: transparent; border: none; color: var(--text-muted); cursor: pointer; padding: 2px 5px; font-size: 11px; transition: 0.1s; }
+        .terminal-header button:hover { color: var(--text-main); }
+
+        #console-output { flex: 1; padding: 10px 15px; font-family: 'SFMono-Regular', Consolas, monospace; font-size: 12px; overflow-y: auto; color: #abb2bf; line-height: 1.5; }
+
+        .term-line { display: block; word-break: break-all; }
+        .term-info { color: var(--accent); font-weight: bold; }
+        .term-error { color: var(--danger); font-weight: bold; }
+        .term-success { color: var(--success); font-weight: bold; }
+        .term-chisel { color: #c678dd; font-weight: bold; }
+        .term-user { color: #56b6c2; }
+        .term-cycle { color: var(--warning); border-left: 2px solid var(--warning); padding-left: 8px; margin-top: 2px; background: rgba(229, 192, 123, 0.05); }
+
+
+        /* ============================================================
+           FULL-SCREEN ACADEMIC LANDING PAGE
+           ============================================================ */
+        .landing-page {
+            position: absolute;
+            inset: 0;
+            z-index: 9999;
+            height: 100vh;
+            width: 100vw;
+            background:
+                radial-gradient(circle at 15% 18%, rgba(74, 144, 226, 0.12), transparent 30%),
+                radial-gradient(circle at 80% 70%, rgba(152, 195, 121, 0.06), transparent 34%),
+                #14181f;
+            display: flex;
+            align-items: stretch;
+            justify-content: stretch;
+            overflow: hidden;
+            box-sizing: border-box;
+        }
+
+        .landing-shell {
+            width: 100%;
+            height: 100%;
+            display: grid;
+            grid-template-columns: minmax(430px, 38vw) 1fr;
+            background: transparent;
+        }
+
+        .landing-left {
+            height: 100%;
+            padding: clamp(34px, 4vw, 64px);
+            box-sizing: border-box;
+            background: linear-gradient(180deg, rgba(20, 21, 24, 0.99), rgba(18, 21, 27, 0.99));
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .landing-logo {
+            width: 210px;
+            height: 52px;
+            object-fit: contain;
+            background: #ffffff;
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 5px;
+            padding: 4px 8px;
+            margin-bottom: 30px;
+        }
+
+        .landing-kicker {
+            color: var(--accent);
+            font-size: 12px;
+            font-weight: 800;
+            letter-spacing: 1.8px;
+            text-transform: uppercase;
+            margin-bottom: 12px;
+        }
+
+        .landing-title {
+            color: var(--text-main);
+            font-size: clamp(34px, 3.2vw, 48px);
+            line-height: 1.07;
+            margin: 0 0 18px 0;
+            letter-spacing: -0.7px;
+            max-width: 700px;
+        }
+
+        .landing-title span { color: var(--accent); }
+
+        .landing-description {
+            color: var(--text-muted);
+            font-size: clamp(14px, 1.1vw, 16px);
+            line-height: 1.65;
+            max-width: 680px;
+            margin: 0 0 24px 0;
+        }
+
+        .landing-note {
+            display: inline-flex;
+            align-items: center;
+            width: fit-content;
+            gap: 8px;
+            color: var(--success);
+            border: 1px solid rgba(152, 195, 121, 0.28);
+            background: rgba(152, 195, 121, 0.075);
+            border-radius: 999px;
+            padding: 8px 13px;
+            font-size: 13px;
+            font-weight: 700;
+            margin-bottom: 20px;
+        }
+
+        /* 🚨 NEW: RESOURCES CSS */
+        .landing-resources {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 36px;
+        }
+        .resource-link {
+            color: var(--text-muted);
+            font-size: 12px;
+            font-weight: 600;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 14px;
+            background: rgba(255,255,255,0.025);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            transition: all 0.2s ease;
+        }
+        .resource-link:hover {
+            color: var(--text-main);
+            background: rgba(255,255,255,0.06);
+            border-color: #5c6370;
+        }
+
+        .workflow-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+            max-width: 700px;
+        }
+
+        .workflow-card {
+            border: 1px solid var(--border);
+            background: rgba(255,255,255,0.025);
+            border-radius: 9px;
+            padding: 15px;
+        }
+
+        .workflow-step {
+            color: var(--accent);
+            font-size: 10px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 1.3px;
+            margin-bottom: 8px;
+        }
+
+        .workflow-card h3 {
+            margin: 0 0 7px 0;
+            font-size: 15px;
+            color: var(--text-main);
+        }
+
+        .workflow-card p {
+            margin: 0;
+            color: var(--text-muted);
+            font-size: 12.5px;
+            line-height: 1.48;
+        }
+
+        /* 🚨 NEW: ACADEMIC FOOTER CSS */
+        .landing-footer {
+            margin-top: auto; /* Pushes footer to the bottom */
+            padding-top: 25px;
+            border-top: 1px solid rgba(255,255,255,0.05);
+            color: #5c6370;
+            font-size: 11px;
+            line-height: 1.6;
+        }
+        .academic-link {
+            color: #abb2bf;
+            text-decoration: none;
+            border-bottom: 1px dotted #abb2bf;
+            transition: color 0.2s, border-color 0.2s;
+        }
+        .academic-link:hover {
+            color: var(--accent);
+            border-bottom-color: var(--accent);
+        }
+
+        .landing-right {
+            height: 100%;
+            padding: clamp(22px, 2.2vw, 38px);
+            box-sizing: border-box;
+            display: grid;
+            grid-template-rows: auto minmax(0, 1fr) auto;
+            gap: 18px;
+            background: rgba(24, 26, 31, 0.95);
+            min-width: 0;
+        }
+
+        .upload-panel {
+            border: 1px solid rgba(74, 144, 226, 0.28);
+            background: linear-gradient(180deg, rgba(33,37,43,0.99), rgba(20,21,24,0.99));
+            border-radius: 13px;
+            padding: 20px;
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) minmax(340px, 430px);
+            align-items: center;
+            gap: 22px;
+            box-shadow: 0 14px 40px rgba(0,0,0,0.22);
+        }
+
+        .upload-heading {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            min-width: 0;
+        }
+
+        .upload-icon {
+            flex: 0 0 auto;
+            width: 58px;
+            height: 58px;
+            border-radius: 14px;
+            background: rgba(74, 144, 226, 0.13);
+            border: 1px solid rgba(74, 144, 226, 0.32);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--accent);
+            font-size: 15px;
+            font-weight: 800;
+            letter-spacing: 1px;
+        }
+
+        .upload-panel h2 {
+            margin: 0 0 6px 0;
+            color: var(--text-main);
+            font-size: 22px;
+        }
+
+        .upload-panel p {
+            margin: 0;
+            color: var(--text-muted);
+            font-size: 13px;
+            line-height: 1.5;
+            max-width: 680px;
+        }
+
+        .upload-box {
+            border: 1px dashed rgba(74, 144, 226, 0.72);
+            border-radius: 11px;
+            background: rgba(74, 144, 226, 0.075);
+            padding: 18px;
+            text-align: center;
+        }
+
+        .upload-box strong {
+            display: block;
+            color: var(--text-main);
+            font-size: 14px;
+            margin-bottom: 4px;
+        }
+
+        .upload-box span {
+            display: block;
+            color: var(--text-muted);
+            font-size: 11.5px;
+            margin-bottom: 14px;
+        }
+
+        .upload-button {
+            justify-content: center;
+            padding: 13px 24px;
+            font-size: 14px;
+            font-weight: 800;
+            border-radius: 7px;
+            box-shadow: 0 10px 26px rgba(74, 144, 226, 0.25);
+            width: 100%;
+        }
+
+        .landing-preview {
+            min-height: 0;
+            border: 1px solid var(--border);
+            background: rgba(255,255,255,0.025);
+            border-radius: 13px;
+            padding: 14px;
+            display: grid;
+            grid-template-rows: minmax(0, 1fr) auto;
+            overflow: hidden;
+        }
+
+        .landing-preview img {
+            width: 100%;
+            height: 100%;
+            min-height: 360px;
+            object-fit: contain;
+            object-position: center;
+            background: #10141a;
+            border-radius: 9px;
+            border: 1px solid var(--border);
+            display: block;
+        }
+
+        .preview-caption {
+            display: flex;
+            justify-content: space-between;
+            gap: 20px;
+            align-items: center;
+            padding-top: 12px;
+        }
+
+        .preview-caption strong {
+            display: block;
+            color: var(--text-main);
+            font-size: 13px;
+            margin-bottom: 3px;
+        }
+
+        .preview-caption span {
+            display: block;
+            color: var(--text-muted);
+            font-size: 12px;
+            line-height: 1.4;
+        }
+
+        .landing-meta {
+            display: grid;
+            grid-template-columns: minmax(360px, 0.9fr) 1.1fr;
+            gap: 14px;
+            min-height: 0;
+        }
+
+        .level-strip {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+        }
+
+        .level-pill {
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px 8px;
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 10.5px;
+            background: rgba(255,255,255,0.025);
+        }
+
+        .level-pill strong {
+            display: block;
+            color: var(--accent);
+            font-size: 12px;
+            margin-bottom: 4px;
+        }
+
+        .requirements {
+            border: 1px solid var(--border);
+            background: rgba(255,255,255,0.025);
+            border-radius: 8px;
+            padding: 13px 16px;
+        }
+
+        .requirements-title {
+            color: var(--text-main);
+            font-size: 12px;
+            font-weight: 800;
+            letter-spacing: 1.2px;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+
+        .requirements ul {
+            margin: 0;
+            padding-left: 18px;
+            color: var(--text-muted);
+            font-size: 12px;
+            line-height: 1.65;
+        }
+
+        @media (max-width: 1200px) {
+            .landing-shell { grid-template-columns: 1fr; overflow: auto; }
+            .landing-page { overflow: auto; }
+            .landing-left { min-height: auto; justify-content: flex-start; }
+            .landing-right { height: auto; }
+            .upload-panel { grid-template-columns: 1fr; }
+            .landing-meta { grid-template-columns: 1fr; }
+            .landing-preview img { min-height: 280px; }
+        }
+
+        @media (max-width: 760px) {
+            .landing-left, .landing-right { padding: 22px; }
+            .workflow-grid { grid-template-columns: 1fr; }
+            .level-strip { grid-template-columns: repeat(2, 1fr); }
+            .landing-title { font-size: 30px; }
+            .landing-logo { width: 180px; }
+        }
+    </style>
+</head>
+<body>
+
+<div id="landing-page" class="landing-page">
+    <div class="landing-shell">
+
+        <section class="landing-left">
+            <img src="/branding/rptu-eis-logo.png" alt="RPTU and EIS Logo" class="landing-logo">
+
+            <div class="landing-kicker">RPTU · EIS Digital Systems Laboratory</div>
+
+            <h1 class="landing-title">
+                <span>RISC-V</span> Processor Debugging Environment
+            </h1>
+
+            <p class="landing-description">
+                This platform helps you debug a multi-stage RISC-V processor written in Chisel.
+                Upload your <strong>src</strong> folder, let the system detect your current architecture level,
+                compile it with the matching system testbench, and inspect the processor cycle by cycle.
+            </p>
+
+            <div class="landing-note">First time here? Start by uploading only your project src folder.</div>
+
+            <div class="landing-resources">
+                <a href="https://riscv.org/technical/specifications/" target="_blank" class="resource-link" title="Official RISC-V Specifications">
+                    <span style="color: var(--accent);">📄</span> RISC-V ISA Reference
+                </a>
+                <a href="https://www.chisel-lang.org/" target="_blank" class="resource-link" title="Chisel Documentation & API">
+                    <span style="color: var(--warning);">📘</span> Chisel Documentation
+                </a>
+            </div>
+
+            <div class="workflow-grid">
+                <div class="workflow-card">
+                    <div class="workflow-step">Step 01</div>
+                    <h3>Upload your source folder</h3>
+                    <p>Select the folder containing your Chisel modules. No ZIP file and no local toolchain are required.</p>
+                </div>
+
+                <div class="workflow-card">
+                    <div class="workflow-step">Step 02</div>
+                    <h3>Automatic level detection</h3>
+                    <p>The backend detects whether your design is basic, forwarding-enabled, memory-ready, or control-flow capable.</p>
+                </div>
+
+                <div class="workflow-card">
+                    <div class="workflow-step">Step 03</div>
+                    <h3>Compile and simulate</h3>
+                    <p>Your uploaded design is compiled with the appropriate BinaryFile and live Chisel testbench.</p>
+                </div>
+
+                <div class="workflow-card">
+                    <div class="workflow-step">Step 04</div>
+                    <h3>Debug visually</h3>
+                    <p>Use the editor, pipeline diagram, register bank, console logs, and Surfer waveforms to find bugs.</p>
+                </div>
+            </div>
+
+            <div class="landing-footer">
+                Developed under the supervision of <a href="https://eit.rptu.de/fgs/eis/people/jauch" target="_blank" class="academic-link">Tobias Jauch</a>.<br>
+                Chair of Electronic Design Automation (EIS), RPTU Kaiserslautern-Landau.
+            </div>
+        </section>
+
+        <section class="landing-right">
+            <div class="upload-panel">
+                <div class="upload-heading">
+                    <div class="upload-icon">SRC</div>
+                    <div>
+                        <h2>Start your debugging session</h2>
+                        <p>
+                            Upload the <strong>src</strong> folder of your processor project. Student test files are ignored,
+                            the architecture level is detected automatically, and the IDE opens with the correct testbench.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="upload-box">
+                    <strong>Select your Chisel source folder</strong>
+                    <span>Expected: src/main/scala/... and optional BinaryFile</span>
+
+                    <input type="file" id="folder-upload" webkitdirectory directory multiple style="display: none;" onchange="handleFolderUpload(event)">
+
+                    <button class="btn btn-compile upload-button" onclick="document.getElementById('folder-upload').click()">
+                        Browse Source Folder
+                    </button>
+                </div>
+            </div>
+
+            <div class="landing-preview">
+                <img src="/static/landing/landing-preview.png" alt="Pipeline visualizer preview" onerror="this.parentElement.style.display='none'">
+                <div class="preview-caption">
+                    <div>
+                        <strong>What you will see after upload</strong>
+                        <span>Step through code, pipeline state, registers, hazards, forwarding, branches, console logs, and VCD waveforms.</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="landing-meta">
+                <div class="level-strip">
+                    <div class="level-pill"><strong>Level 1</strong>Basic ALU</div>
+                    <div class="level-pill"><strong>Level 2</strong>Forwarding</div>
+                    <div class="level-pill"><strong>Level 3</strong>Memory</div>
+                    <div class="level-pill"><strong>Level 4</strong>Branches</div>
+                </div>
+
+                <div class="requirements">
+                    <div class="requirements-title">Before uploading</div>
+                    <ul>
+                        <li>Upload the project <strong>src</strong> folder, not the full repository.</li>
+                        <li>Keep hardware modules inside <strong>src/main/scala</strong>.</li>
+                        <li>Student test files are ignored for safety and consistency.</li>
+                        <li>You can use the system testbench or your own BinaryFile after upload.</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+    </div>
+</div>
+
+<div class="toolbar">
+    <div class="brand-area">
+        <div class="logo-group">
+            <img src="/branding/rptu-eis-logo.png" alt="RPTU and EIS Logo" class="combined-logo">
+        </div>
+
+        <div class="brand-text">
+            <div class="lab-name">RPTU · EIS Digital Systems Laboratory</div>
+            <div class="tool-title"><span>RISC-V</span> Processor Debugging Environment</div>
+            <div class="tool-subtitle">Multi-stage Chisel processor visualization for university course projects</div>
+        </div>
+    </div>
+
+    <div class="controls">
+        <div style="display: flex; align-items: center; background: var(--bg-darker); border: 1px solid var(--border); border-radius: 3px; padding: 2px; margin-right: 15px;">
+            <span style="font-size: 10px; color: var(--text-muted); font-weight: bold; text-transform: uppercase; padding: 0 8px;">Run Test:</span>
+            <select id="asm-selector" class="btn" style="background: var(--bg-panel); border: none; color: var(--success); font-weight: bold;">
+                <option value="system">System Testbench</option>
+                <option value="student">My Custom Assembly</option>
+            </select>
+        </div>
+
+        <button class="btn" onclick="exportProject()" title="Save source files">Export</button>
+        <button class="btn" style="color: var(--danger);" onclick="exitToLanding()">Upload New Code</button>
+        <button class="btn btn-compile" onclick="compileCode()">Compile & Simulate</button>
+    </div>
+</div>
+
+<div class="workspace">
+    <div class="sidebar-tree">
+        <div class="tree-header">Project Explorer</div>
+        <div class="tree-content">
+            <div class="tree-item"><span class="icon">▸</span> core_tile</div>
+            <div class="tree-item indent-1" id="tree-haz" onclick="switchTab('HazardDetection.scala')"><span class="icon">•</span> HazardDetection.scala</div>
+            <div class="tree-item indent-1" id="tree-alu" onclick="switchTab('ALU.scala')"><span class="icon">•</span> ALU.scala</div>
+
+            <div class="tree-item" style="margin-top: 15px;"><span class="icon">▸</span> programs</div>
+            <div class="tree-item indent-1" id="tree-asm" onclick="switchTab('test_prog.s')"><span class="icon">•</span> test_prog.s</div>
+        </div>
+    </div>
+
+    <div class="main-area">
+        <div class="editor-tabs">
+            <button id="tab-code" class="tab active" onclick="switchTab(currentFile)">Code Editor</button>
+            <button id="tab-viz" class="tab" onclick="switchView('viz')"> Pipeline Visualizer</button>
+            <button id="tab-wave" class="tab" onclick="switchView('wave')"> Waveforms</button>
+            <div style="flex: 1;"></div>
+
+            <div style="flex: 1;"></div>
+
+            <div class="telemetry-group">
+                <button class="btn" style="height: 24px; padding: 0 10px;" onclick="sendCommand('reset')" title="Restart to Cycle 0">Restart</button>
+                <button class="btn" style="height: 24px; padding: 0 10px;" onclick="sendCommand('back')" title="Step Back 1 Cycle">Back</button>
+                <button class="btn" style="height: 24px; padding: 0 10px;" onclick="sendCommand('step')" title="Step Forward 1 Cycle">Step</button>
+                <button class="btn" style="height: 24px; padding: 0 10px;" onclick="sendCommand('run', 5)" title="Fast Forward 5 Cycles">Fast</button>
+
+                <div class="cycle-badge" style="margin-left: 8px;">
+                    <span class="cycle-label">Cycle</span>
+                    <span class="cycle-value" id="ui-cycle-count">0</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="content-container">
+            <div id="monaco-container"></div>
+
+            <div id="viz-container">
+                <div class="viz-svg">
+                    <object id="pipeline-svg" data="/static/pipeline.svg" type="image/svg+xml" style="width: 100%; height: 100%;"></object>
+                </div>
+                <div class="viz-sidebar">
+                    <div class="panel-header">Display Toggles</div>
+                    <div class="toggles-container">
+                        <label><input type="checkbox" id="chk-haz" checked> Show Hazards</label>
+                        <label><input type="checkbox" id="chk-path" checked> Datapath</label>
+                    </div>
+                    <div class="panel-header">Register Memory Bank</div>
+                    <div class="reg-grid-container">
+                        <div class="reg-grid" id="reg-grid"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="wave-container" style="display: none; width: 100%; height: 100%; background: #181a1f;">
+                <iframe id="surfer-iframe" style="width: 100%; height: 100%; border: none;"></iframe>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="terminal-panel">
+    <div class="terminal-header">
+        <span>Console Output</span>
+        <div>
+            <button onclick="toggleTerminal()" id="btn-toggle-term">[ Collapse ]</button>
+            <button onclick="clearTerminal()">[ Clear ]</button>
+        </div>
+    </div>
+    <div id="console-output">
+        <div class="term-line">System booted. Environment ready.</div>
+    </div>
+</div>
+
+<script>
+    // ==========================================
+    // 🛠️ FAILSAFE DEBUGGER TOOL 🛠️
+    // ==========================================
+    window.addEventListener('error', function(event) {
+        const consoleOut = document.getElementById('console-output');
+        if (consoleOut) {
+            consoleOut.innerHTML += `<div style="color: #fff; font-weight: bold; background: #d32f2f; padding: 10px; margin-top: 5px; border-radius: 3px;">🚨 FATAL JS CRASH: ${event.message} (Line ${event.lineno})</div>`;
+            consoleOut.scrollTop = consoleOut.scrollHeight;
+        }
+    });
+
+    // ==========================================
+    // 1. GLOBAL VARIABLES & SETUP
+    // ==========================================
+    let editor;
+    let currentFile = '';
+    let codes = {};
+    let lastPacket = null;
+
+    window.currentSessionId = sessionStorage.getItem('chisel_session_id') || null;
+
+    if (socket.connected && window.currentSessionId) {
+        socket.emit('join_session', window.currentSessionId);
+    }
+    socket.on('connect', () => {
+        if (window.currentSessionId) socket.emit('join_session', window.currentSessionId);
+    });
+
+    // ==========================================
+    // 2. TERMINAL LOGIC
+    // ==========================================
+    function appendTerminal(text, type = 'default') {
+        const consoleOut = document.getElementById('console-output');
+        if (!consoleOut || !text.trim()) return;
+
+        let cssClass = 'term-line';
+        let formattedText = text.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+        if (type === 'user') {
+            cssClass += ' term-user';
+            formattedText = `> ${formattedText}`;
+        } else if (formattedText.includes('[info]')) {
+            formattedText = formattedText.replace('[info]', '<span class="term-info">[info]</span>');
+        } else if (formattedText.includes('[error]')) {
+            cssClass += ' term-error';
+        } else if (formattedText.includes('[success]')) {
+            cssClass += ' term-success';
+        } else if (formattedText.includes('[CHISEL]')) {
+            formattedText = formattedText.replace('[CHISEL]', '<span class="term-chisel">[HW]</span>');
+        } else if (formattedText.includes('▶ Cycle')) {
+            cssClass += ' term-cycle';
+        } else if (formattedText.includes('[DEBUG]')) {
+            cssClass += ' term-cycle';
+            formattedText = `<span style="color: #c678dd; font-weight: bold;">${formattedText}</span>`;
+        }
+
+        const lineDiv = document.createElement('div');
+        lineDiv.className = cssClass;
+        lineDiv.innerHTML = formattedText;
+        consoleOut.appendChild(lineDiv);
+        consoleOut.scrollTop = consoleOut.scrollHeight;
+    }
+
+    function clearTerminal() {
+        document.getElementById('console-output').innerHTML = '';
+    }
+
+    function toggleTerminal() {
+        const termPanel = document.querySelector('.terminal-panel');
+        const toggleBtn = document.getElementById('btn-toggle-term');
+
+        termPanel.classList.toggle('collapsed');
+
+        if (termPanel.classList.contains('collapsed')) {
+            toggleBtn.innerText = '[ Expand ]';
+        } else {
+            toggleBtn.innerText = '[ Collapse ]';
+            const consoleOut = document.getElementById('console-output');
+            consoleOut.scrollTop = consoleOut.scrollHeight;
+        }
+
+        setTimeout(() => {
+            if (editor) editor.layout();
+        }, 210);
+    }
+
+    socket.on('build_log', (data) => appendTerminal(data.line));
+
+    // ==========================================
+    // 3. HARDWARE COMMUNICATION & VISUALIZER
+    // ==========================================
+    function sendCommand(action, val=null) {
+        if (!window.currentSessionId) return;
+        const payload = { action: action, session_id: window.currentSessionId };
+        let cmdEcho = action.toUpperCase();
+
+        if (val) { payload.value = val; cmdEcho += ` ${val}`; }
+        if (action !== 'init') appendTerminal(`Command: ${cmdEcho}`, 'user');
+
+        socket.emit('command', payload);
+    }
+
+    socket.on('update', (packet) => {
+        console.log("🔥 CYCLE " + packet.cycle + " RAW JSON:", packet.enriched);
+        lastPacket = packet;
+
+        const asmEx = (packet.enriched.asm?.ex || "").trim().toLowerCase();
+        if (asmEx.startsWith("b") || asmEx.startsWith("j")) {
+            const pcSrc = packet.enriched.ex?.pc_src;
+            const pcJb = packet.enriched.ex?.pc_jb;
+        }
+
+        updateSVG(packet.enriched);
+        updateRegisters(packet.registers, packet.enriched.wb);
+
+        const cycleUI = document.getElementById('ui-cycle-count');
+        const currentCycle = packet.cycle !== undefined ? packet.cycle : packet.enriched?.cycle;
+
+        if (cycleUI && currentCycle !== undefined) {
+            cycleUI.innerText = currentCycle;
+        }
+    });
+
+    // --- 5. UPDATE THE SVG VISUALIZER ---
+    function updateSVG(data) {
+        try {
+            let svgDoc = document;
+            const svgObj = document.getElementById('pipeline-svg');
+            if (svgObj && svgObj.contentDocument) svgDoc = svgObj.contentDocument;
+
+            const bg = svgDoc.querySelector('rect');
+            if (bg) {
+                bg.setAttribute('fill', '#21252b');
+                setTimeout(() => bg.setAttribute('fill', '#181a1f'), 150);
+            }
+
+            const setText = (id, text, color) => {
+                const el = svgDoc.getElementById(id);
+                if (el) {
+                    el.textContent = text;
+                    if (color) el.setAttribute('fill', color);
+                }
+            };
+
+            const toHex = (val) => "0x" + (val >>> 0).toString(16).padStart(8, '0');
+
+            setText('txt-pc-if', `PC: ${data.pc_hex?.if || '--'}`, '#8b929e');
+            setText('txt-asm-if', data.asm?.if || 'nop', '#98c379');
+            setText('txt-hex-if', toHex(data.instr?.if), '#5c6370');
+
+            setText('txt-pc-id', data.pc_hex?.id || '--', '#8b929e');
+            setText('txt-asm-id', data.asm?.id || 'nop', '#98c379');
+            setText('txt-hex-id', toHex(data.instr?.id), '#5c6370');
+            if (data.id_info) {
+                setText('txt-rs1-id', `rs1: x${data.id_info.rs1}`, '#abb2bf');
+                setText('txt-rs2-id', `rs2: x${data.id_info.rs2}`, '#abb2bf');
+                setText('txt-rd-id', `->rd: x${data.id_info.rd}`, '#abb2bf');
+            }
+
+            const asmEx = (data.asm?.ex || "").trim().toLowerCase();
+            const isBranchInst = asmEx.startsWith("b") && asmEx !== "break";
+            const isJumpInst   = asmEx.startsWith("j");
+
+            // --- UPDATE EX STAGE ---
+            setText('txt-pc-ex', data.pc_hex?.ex || '--', '#8b929e');
+            setText('txt-asm-ex', data.asm?.ex || 'nop', '#98c379');
+            setText('txt-hex-ex', toHex(data.instr?.ex), '#5c6370');
+
+            const valA = data.ex?.val_a || 0;
+            const valB = data.ex?.val_b || 0;
+
+            const offsetMatch = asmEx.match(/[+-]\d+/);
+            const offsetStr = offsetMatch ? offsetMatch[0] : "";
+
+            if (isBranchInst) {
+                let op = "??";
+                if (asmEx.startsWith("beq")) op = "==";
+                else if (asmEx.startsWith("bne")) op = "≠";
+                else if (asmEx.startsWith("blt")) op = "<";
+                else if (asmEx.startsWith("bge")) op = "≥";
+
+                setText('txt-op-a', `Check: ${valA} ${op} ${valB}`, '#e5c07b');
+                setText('txt-op-b', `Offset: ${offsetStr}`, '#abb2bf');
+                setText('txt-alu-ex', `Evaluating...`, '#c678dd');
+
+            } else if (isJumpInst) {
+                setText('txt-op-a', `Action: Jump`, '#c678dd');
+                setText('txt-op-b', `Offset: ${offsetStr}`, '#abb2bf');
+                setText('txt-alu-ex', `Ret Addr: ${toHex(data.ex?.alu_result || 0)}`, '#fff');
+
+            } else {
+                setText('txt-op-a', `OperandA: ${valA}`, '#abb2bf');
+                setText('txt-op-b', `OperandB: ${valB}`, '#abb2bf');
+                setText('txt-alu-ex', `Res: ${data.ex?.alu_result || '0x0'}`, '#fff');
+            }
+
+            // --- UPDATE MEM STAGE ---
+            setText('txt-pc-mem', data.pc_hex?.mem || '--', '#8b929e');
+            setText('txt-asm-mem', data.asm?.mem || 'nop', '#98c379');
+            setText('txt-hex-mem', toHex(data.instr?.mem), '#5c6370');
+
+            const memData = data.mem || {};
+            const asmMem = (data.asm?.mem || "").trim().toLowerCase();
+
+            const isStore = asmMem.startsWith("sw") || asmMem.startsWith("sh") || asmMem.startsWith("sb");
+            const isLoad  = asmMem.startsWith("lw") || asmMem.startsWith("lh") || asmMem.startsWith("lb");
+
+            const shortAddr = "0x" + (memData.addr || 0).toString(16);
+            const shortWData = "0x" + (memData.wdata || 0).toString(16);
+
+            const regMatch = asmMem.match(/x\d+/);
+            const targetReg = regMatch ? regMatch[0] : `x${memData.rd || 0}`;
+
+            const memActiveColor = '#98c379';
+
+            if (isStore) {
+                setText('txt-mem-status', `${shortWData} → [${shortAddr}]`, memActiveColor);
+            } else if (isLoad) {
+                setText('txt-mem-status', `[${shortAddr}] → ${targetReg}`, memActiveColor);
+            } else {
+                setText('txt-mem-status', 'Idle', '#5c6370');
+            }
+
+            // --- UPDATE WB STAGE ---
+            setText('txt-pc-wb', `PC: ${data.pc_hex?.wb || '--'}`, '#8b929e');
+            setText('txt-asm-wb', data.asm?.wb || 'nop', '#98c379');
+            setText('txt-hex-wb', toHex(data.instr?.wb), '#5c6370');
+
+            const wbWire = svgDoc.getElementById('wire-wb-back');
+            const rfBox = svgDoc.getElementById('regfile-box');
+            const rfTitle = svgDoc.getElementById('txt-rf-title');
+            const rfStatus = svgDoc.getElementById('txt-rf-status');
+
+            if (data.wb && data.wb.we === 1 && data.wb.rd !== 0) {
+                setText('txt-wb-reg', `x${data.wb.rd} = 0x${(data.wb.wdata >>> 0).toString(16)}`, '#98c379');
+                if (wbWire) {
+                    wbWire.setAttribute('stroke', '#98c379');
+                    wbWire.setAttribute('stroke-width', '2');
+                    wbWire.setAttribute('marker-end', 'url(#arrow-green)');
+                }
+                if (rfBox) rfBox.setAttribute('stroke', '#98c379');
+                if (rfTitle) rfTitle.setAttribute('fill', '#98c379');
+                if (rfStatus) {
+                    rfStatus.textContent = `Writing x${data.wb.rd}`;
+                    rfStatus.setAttribute('fill', '#98c379');
+                }
+            } else {
+                setText('txt-wb-reg', `Idle`, '#5c6370');
+
+                if (wbWire) {
+                    wbWire.setAttribute('stroke', '#4b5363');
+                    wbWire.setAttribute('stroke-width', '2');
+                    wbWire.setAttribute('marker-end', 'url(#arrow)');
+                }
+                if (rfBox) rfBox.setAttribute('stroke', '#4b5363');
+                if (rfTitle) rfTitle.setAttribute('fill', '#d7dae0');
+                if (rfStatus) {
+                    rfStatus.textContent = `Reading`;
+                    rfStatus.setAttribute('fill', '#8b929e');
+                }
+            }
+
+            // ==========================================
+            //  FORWARDING UNIT LOGIC
+            // ==========================================
+            const fwdA = data.fwd?.a_sel || 0;
+            const fwdB = data.fwd?.b_sel || 0;
+            const wireMemFwd = svgDoc.getElementById('wire-mem-fwd');
+            const wireWbFwd  = svgDoc.getElementById('wire-wb-fwd');
+            const wireFwdA   = svgDoc.getElementById('wire-fwd-a');
+            const wireFwdB   = svgDoc.getElementById('wire-fwd-b');
+            const boxFwdUnit = svgDoc.getElementById('box-fwd-unit');
+
+            const setWire = (wire, isActive) => {
+                if (!wire) return;
+                if (isActive) {
+                    wire.setAttribute('stroke', '#4A90E2');
+                    wire.setAttribute('stroke-width', '2');
+                    wire.setAttribute('stroke-dasharray', '5,5');
+                    wire.setAttribute('marker-end', 'url(#arrow-blue)');
+                } else {
+                    wire.setAttribute('stroke', '#4b5363');
+                    wire.setAttribute('stroke-width', '2');
+                    wire.setAttribute('stroke-dasharray', '4,4');
+                    wire.setAttribute('marker-end', 'url(#arrow)');
+                }
+            };
+
+            const usingMem = (fwdA === 1 || fwdB === 1);
+            const usingWb  = (fwdA === 2 || fwdB === 2);
+
+            setWire(wireMemFwd, usingMem);
+            setWire(wireWbFwd, usingWb);
+            setWire(wireFwdA, fwdA !== 0);
+            setWire(wireFwdB, fwdB !== 0);
+
+            if (fwdA !== 0 || fwdB !== 0) {
+                setText('txt-fwd-status', `FWD A:${fwdA} B:${fwdB}`, '#4A90E2');
+                if (boxFwdUnit) boxFwdUnit.setAttribute('stroke', '#4A90E2');
+            } else {
+                setText('txt-fwd-status', 'FWD UNIT', '#d7dae0');
+                if (boxFwdUnit) boxFwdUnit.setAttribute('stroke', '#d7dae0');
+            }
+
+            // ==========================================
+            //  BRANCH & JUMP LOGIC
+            // ==========================================
+            const branchWire = svgDoc.getElementById('wire-branch');
+            const branchText = svgDoc.getElementById('txt-branch-target');
+
+            const chkHaz = document.getElementById('chk-haz');
+            const hazardOpacity = (chkHaz && chkHaz.checked === false) ? "0" : "1";
+
+            if (branchWire && branchText) {
+                branchWire.style.opacity = hazardOpacity;
+                branchText.style.opacity = hazardOpacity;
+
+                const valA = data.ex?.alu_op_a || 0;
+                const valB = data.ex?.alu_op_b || 0;
+                const pcDec = parseInt(data.pc_hex?.ex || "0", 16);
+
+                let isTaken = false;
+                let targetDec = 0;
+                let reason = "";
+
+                if (isJumpInst || isBranchInst) {
+                    const asmWords = asmEx.split(/[\s,]+/);
+                    const immStr = asmWords[asmWords.length - 1];
+                    const immDec = parseInt(immStr.replace('+', '')) || 0;
+                    const sign = immDec >= 0 ? "+" : "-";
+
+                    if (isJumpInst) {
+                        isTaken = true;
+                        if (asmEx.startsWith("jalr")) {
+                            targetDec = valA + immDec;
+                            reason = `(Rs1 ${sign} ${Math.abs(immDec)})`;
+                        } else {
+                            targetDec = pcDec + immDec;
+                            reason = `(${pcDec} ${sign} ${Math.abs(immDec)} = ${targetDec})`;
+                        }
+                    } else if (isBranchInst) {
+                        targetDec = pcDec + immDec;
+                        let opTaken = "==";
+                        let opNotTaken = "≠";
+
+                        if (asmEx.startsWith("beq")) { isTaken = (valA === valB); opTaken = "=="; opNotTaken = "≠"; }
+                        else if (asmEx.startsWith("bne")) { isTaken = (valA !== valB); opTaken = "≠"; opNotTaken = "=="; }
+                        else if (asmEx.startsWith("blt")) { isTaken = (valA < valB); opTaken = "<"; opNotTaken = "≥"; }
+                        else if (asmEx.startsWith("bge")) { isTaken = (valA >= valB); opTaken = "≥"; opNotTaken = "<"; }
+
+                        reason = isTaken ? `(${valA} ${opTaken} ${valB})` : `(${valA} ${opNotTaken} ${valB})`;
+                    }
+                }
+
+                if (isTaken) {
+                    branchWire.setAttribute('stroke', '#c678dd');
+                    branchWire.setAttribute('stroke-width', '2');
+                    branchWire.setAttribute('stroke-dasharray', 'none');
+                    branchWire.setAttribute('marker-end', 'url(#arrow-purple)');
+
+                    branchText.textContent = `TARGET: ${toHex(targetDec)} ${reason}`;
+                    branchText.setAttribute('fill', '#c678dd');
+
+                } else if (isBranchInst && !isTaken) {
+                    branchWire.setAttribute('stroke', '#4b5363');
+                    branchWire.setAttribute('stroke-width', '2');
+                    branchWire.setAttribute('stroke-dasharray', '5,5');
+                    branchWire.setAttribute('marker-end', 'url(#arrow)');
+
+                    branchText.textContent = `NOT TAKEN ${reason}`;
+                    branchText.setAttribute('fill', '#8b929e');
+
+                } else {
+                    branchWire.setAttribute('stroke', '#4b5363');
+                    branchWire.setAttribute('stroke-width', '2');
+                    branchWire.setAttribute('stroke-dasharray', '5,5');
+                    branchWire.setAttribute('marker-end', 'url(#arrow)');
+                    branchText.textContent = "";
+                }
+            }
+
+            // ==========================================
+            //  STALL & FLUSH HAZARD LOGIC
+            // ==========================================
+            const haz = data.hazard || {};
+            const isIfStall = haz.if_stall === 1;
+            const isIdStall = haz.id_stall === 1;
+            const isFlush   = haz.flush === 1;
+
+            const applyHazardState = (stagePrefix, stallFlag, flushFlag) => {
+                const box       = svgDoc.getElementById(`stage-${stagePrefix}`);
+                const bStall    = svgDoc.getElementById(`badge-stall-${stagePrefix}`);
+                const tStall    = svgDoc.getElementById(`txt-stall-${stagePrefix}`);
+                const bFlush    = svgDoc.getElementById(`badge-flush-${stagePrefix}`);
+                const tFlush    = svgDoc.getElementById(`txt-flush-${stagePrefix}`);
+
+                if (!box) return;
+
+                if (flushFlag) {
+                    box.setAttribute('stroke', '#e06c75');
+                    if (bFlush) bFlush.setAttribute('opacity', hazardOpacity);
+                    if (tFlush) tFlush.setAttribute('opacity', hazardOpacity);
+                    if (bStall) bStall.setAttribute('opacity', '0');
+                    if (tStall) tStall.setAttribute('opacity', '0');
+                } else if (stallFlag) {
+                    box.setAttribute('stroke', '#e5c07b');
+                    if (bStall) bStall.setAttribute('opacity', hazardOpacity);
+                    if (tStall) tStall.setAttribute('opacity', hazardOpacity);
+                    if (bFlush) bFlush.setAttribute('opacity', '0');
+                    if (tFlush) tFlush.setAttribute('opacity', '0');
+                } else {
+                    box.setAttribute('stroke', '#555');
+                    if (bStall) bStall.setAttribute('opacity', '0');
+                    if (tStall) tStall.setAttribute('opacity', '0');
+                    if (bFlush) bFlush.setAttribute('opacity', '0');
+                    if (tFlush) tFlush.setAttribute('opacity', '0');
+                }
+            };
+
+            applyHazardState('if', isIfStall, isFlush);
+            applyHazardState('id', isIdStall, isFlush);
+
+        } catch (error) {
+            console.error("SVG Update Error:", error);
+            appendTerminal(`[error] SVG CRASH: ${error.message}`);
+        }
+    }
+
+    function updateRegisters(regs, wb_data) {
+        if (!regs) return;
+        const regGrid = document.getElementById('reg-grid');
+        if (regGrid && regGrid.innerHTML === "") {
+            for (let i = 0; i < 32; i++) {
+                regGrid.innerHTML += `<div class="reg-box" id="reg-box-${i}"><span class="reg-name">x${i}</span><div class="reg-val" id="reg-val-${i}">0</div></div>`;
+            }
+        }
+
+        const activeRd = (wb_data && wb_data.we === 1 && wb_data.rd !== 0) ? wb_data.rd : -1;
+
+        for (let i = 0; i < 32; i++) {
+            const boxEl = document.getElementById(`reg-box-${i}`);
+            const valEl = document.getElementById(`reg-val-${i}`);
+
+            if (boxEl) {
+                boxEl.classList.remove('active-write');
+                if (i === activeRd) boxEl.classList.add('active-write');
+            }
+
+            if (valEl && regs[i] !== undefined) {
+                const hexVal = "0x" + (regs[i] >>> 0).toString(16);
+
+                if (valEl.textContent !== hexVal && valEl.textContent !== "0") {
+                    valEl.style.color = "#e5c07b";
+                } else {
+                    valEl.style.color = "#d7dae0";
+                }
+                valEl.textContent = hexVal;
+            }
+        }
+    }
+
+    // ==========================================
+    // 4. DYNAMIC WORKSPACE LOADER
+    // ==========================================
+    async function initWorkspace() {
+        const savedLevel = sessionStorage.getItem('chisel_mission_level') || 1;
+        window.currentMissionLevel = parseInt(savedLevel);
+
+        const savedCodes = sessionStorage.getItem('chisel_ide_codes');
+
+        if (savedCodes) {
+            try {
+                codes = JSON.parse(savedCodes);
+
+                document.getElementById('landing-page').style.display = 'none';
+
+                buildFileTreeAndEditor();
+                updateArchitectureView(window.currentMissionLevel);
+                renderFileExplorer(window.currentMissionLevel);
+
+                appendTerminal(`[info] Restored Level ${window.currentMissionLevel} session from local storage.`);
+            } catch(e) {
+                console.error("Could not parse local storage.");
+            }
+        }
+    }
+
+    function buildFileTreeAndEditor() {
+        const treeContent = document.querySelector('.tree-content');
+        treeContent.innerHTML = `<div class="tree-item"><span class="icon">▸</span> scala</div>`;
+
+        let firstFile = null;
+
+        for (const filename of Object.keys(codes)) {
+            if (filename === 'BinaryFile') continue;
+            if (!firstFile) firstFile = filename;
+
+            const safeId = filename.replace('.scala', '');
+            treeContent.innerHTML += `<div class="tree-item indent-1" id="tree-${safeId}" onclick="switchTab('${filename}')"><span class="icon">•</span> ${filename}</div>`;
+        }
+
+        treeContent.innerHTML += `<div class="tree-item" style="margin-top: 15px;"><span class="icon">▸</span> programs</div>`;
+        if (codes['BinaryFile'] !== undefined) {
+            treeContent.innerHTML += `<div class="tree-item indent-1" id="tree-BinaryFile" onclick="switchTab('BinaryFile')"><span class="icon">•</span> BinaryFile</div>`;
+            if (!firstFile) firstFile = 'BinaryFile';
+        }
+
+        currentFile = firstFile;
+
+        if (!currentFile) {
+            appendTerminal("[error] CRASH PREVENTED: No files were found in your template folder.");
+            document.getElementById('monaco-container').innerHTML = "<h3 style='color:#e06c75; padding: 20px;'>Error: No files loaded.</h3>";
+            return;
+        }
+
+        require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.36.1/min/vs' }});
+        require(['vs/editor/editor.main'], function() {
+
+            if (editor) {
+                editor.dispose();
+            }
+
+            editor = monaco.editor.create(document.getElementById('monaco-container'), {
+                value: codes[currentFile],
+                language: currentFile.endsWith('.scala') ? 'scala' : 'ini',
+                theme: 'vs-dark',
+                automaticLayout: true,
+                minimap: { enabled: false },
+                fontFamily: "'SFMono-Regular', Consolas, 'Courier New', monospace",
+                fontSize: 13
+            });
+
+            editor.onDidChangeModelContent(() => {
+                codes[currentFile] = editor.getValue();
+                sessionStorage.setItem('chisel_ide_codes', JSON.stringify(codes));
+            });
+
+            highlightTreeItem(currentFile);
+        });
+    }
+
+    // ==========================================
+    // 5. UI CONTROLS & COMPILER
+    // ==========================================
+    function switchView(target) {
+        document.getElementById('monaco-container').style.display = 'none';
+        document.getElementById('viz-container').style.display = 'none';
+        document.getElementById('wave-container').style.display = 'none';
+
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+
+        if (target === 'viz') {
+            document.getElementById('viz-container').style.display = 'flex';
+            document.getElementById('tab-viz').classList.add('active');
+        } else if (target === 'wave') {
+            document.getElementById('wave-container').style.display = 'block';
+            document.getElementById('tab-wave').classList.add('active');
+
+            const iframe = document.getElementById('surfer-iframe');
+
+            if (window.currentSessionId) {
+                const vcdUrl = `${window.location.origin}/vcd/${window.currentSessionId}?t=${Date.now()}`;
+                iframe.src = `/static/surfer/pages_build/index.html?load_url=${encodeURIComponent(vcdUrl)}`;
+                appendTerminal(`[info] Loading local Surfer with VCD: ${vcdUrl}`);
+            } else {
+                appendTerminal("[error] No active session. Compile first.");
+            }
+        } else {
+            document.getElementById('monaco-container').style.display = 'block';
+            document.getElementById('tab-code').classList.add('active');
+            if(editor) editor.layout();
+        }
+    }
+
+    function switchTab(filename) {
+        if (!editor) return;
+        currentFile = filename;
+        const lang = filename.endsWith('.scala') ? 'scala' : 'ini';
+        monaco.editor.setModelLanguage(editor.getModel(), lang);
+        editor.setValue(codes[filename]);
+
+        switchView('code');
+        highlightTreeItem(filename);
+    }
+
+    function highlightTreeItem(filename) {
+        document.querySelectorAll('.tree-item').forEach(el => el.classList.remove('active'));
+        const safeId = filename.replace('.scala', '');
+        const treeEl = document.getElementById(`tree-${safeId}`);
+        if (treeEl) treeEl.classList.add('active');
+    }
+
+    async function exportProject() {
+        if (typeof JSZip === 'undefined') {
+            appendTerminal("[error] Export library not loaded. Please refresh the page.");
+            return;
+        }
+
+        appendTerminal("[info] Zipping your modified project files...");
+        const zip = new JSZip();
+
+        for (const [filepath, content] of Object.entries(codes)) {
+            zip.file(filepath, content);
+        }
+
+        try {
+            const blob = await zip.generateAsync({ type: "blob" });
+            const url = window.URL.createObjectURL(blob);
+            const anchor = document.createElement('a');
+            anchor.href = url;
+            anchor.download = "updated_riscv_project.zip";
+            document.body.appendChild(anchor);
+            anchor.click();
+            window.URL.revokeObjectURL(url);
+            anchor.remove();
+
+            appendTerminal("[success] Project exported as ZIP successfully! You can extract this directly over your local folder.");
+        } catch (error) {
+            appendTerminal(`[error] Failed to create ZIP: ${error.message}`);
+        }
+    }
+
+    async function compileCode() {
+        clearTerminal();
+        appendTerminal("[info] Submitting code to server...");
+
+        if (!window.currentSessionId) {
+            window.currentSessionId = 'sess_' + Math.random().toString(16).substring(2, 10);
+            sessionStorage.setItem('chisel_session_id', window.currentSessionId);
+        }
+        socket.emit('join_session', window.currentSessionId);
+
+        try {
+            const scalaFiles = {};
+            for (const [name, content] of Object.entries(codes)) {
+                if (name.endsWith('.scala')) scalaFiles[name] = content;
+            }
+
+            const currentLevel = window.currentMissionLevel;
+
+            const payload = {
+                scala_files: scalaFiles,
+                asm_code: codes['src/test/programs/BinaryFile'] || "",
+                session_id: window.currentSessionId,
+                level: currentLevel
+            };
+
+            const response = await fetch('/compile', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+
+            if (!response.ok) throw new Error(`Server returned status: ${response.status}`);
+            const data = await response.json();
+
+            if (data.status === "success") {
+                appendTerminal(`[success] ${data.message}`);
+                switchView('viz');
+                setTimeout(() => { sendCommand('init'); }, 500);
+            } else {
+                appendTerminal(`[error] ${data.message}`);
+            }
+        } catch (error) {
+            appendTerminal(`[error] JS Error: ${error.message}`);
+        }
+    }
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === "ArrowRight") sendCommand('step');
+        if (e.key === "ArrowLeft")  sendCommand('back');
+    });
+
+    ['chk-haz', 'chk-path'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('change', () => { if (lastPacket) updateSVG(lastPacket.enriched); });
+    });
+
+    // ==========================================
+    // 6. AUTO-GRADER & FOLDER UPLOAD LOGIC
+    // ==========================================
+
+    window.currentMissionLevel = 1;
+    window.systemAsm = "";
+    window.studentAsm = "";
+
+    async function handleFolderUpload(event) {
+        const files = event.target.files;
+        if (files.length === 0) return;
+
+        appendTerminal("[info] Reading uploaded folder structure...");
+        const fileData = {};
+
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+
+            let cleanPath = file.webkitRelativePath;
+            const srcMatch = cleanPath.indexOf('src/');
+            if (srcMatch !== -1) {
+                cleanPath = cleanPath.substring(srcMatch);
+            }
+
+            if (cleanPath.endsWith('.scala') || cleanPath.endsWith('BinaryFile')) {
+                const text = await file.text();
+                fileData[cleanPath] = text;
+            }
+        }
+
+        if (Object.keys(fileData).length === 0) {
+            alert("No .scala files found in the selected folder!");
+            return;
+        }
+
+        appendTerminal("[info] Uploading to debugging engine...");
+
+        try {
+            const response = await fetch('/upload_and_detect', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ files: fileData })
+            });
+
+            const data = await response.json();
+
+            if (data.status === "success") {
+                codes = {};
+                for (const [name, content] of Object.entries(data.scala)) {
+                    codes[name] = content;
+                }
+
+                window.systemAsm = data.asm_system;
+                window.studentAsm = data.asm_student;
+
+                document.getElementById('asm-selector').value = 'system';
+                codes['src/test/programs/BinaryFile'] = window.systemAsm;
+
+                window.currentMissionLevel = data.level;
+                document.getElementById('landing-page').style.display = 'none';
+
+                buildFileTreeAndEditor();
+                updateArchitectureView(data.level);
+                renderFileExplorer(data.level);
+
+                appendTerminal(`[success] Auto-detected Level ${data.level} Architecture!`);
+                appendTerminal(`[info] Loaded System Testbench for Level ${data.level}.`);
+            } else {
+                alert("Upload failed: " + data.message);
+            }
+        } catch (error) {
+            console.error(error);
+            alert("Server connection error.");
+        }
+    }
+
+    function exitToLanding() {
+        if(confirm("Are you sure? This will close the IDE and return to the upload screen.")) {
+            document.getElementById('landing-page').style.display = 'flex';
+            document.getElementById('console-output').innerHTML = '';
+            codes = {};
+
+            sessionStorage.removeItem('chisel_ide_codes');
+            sessionStorage.removeItem('chisel_session_id');
+            window.currentSessionId = null;
+
+            if (editor) editor.setValue("");
+        }
+    }
+
+    const asmSelector = document.getElementById('asm-selector');
+    if (asmSelector) {
+        asmSelector.addEventListener('change', (e) => {
+            if (e.target.value === 'system') {
+                codes['src/test/programs/BinaryFile'] = window.systemAsm;
+            } else {
+                codes['src/test/programs/BinaryFile'] = window.studentAsm;
+            }
+            if (currentFile === 'src/test/programs/BinaryFile' && editor) {
+                editor.setValue(codes['src/test/programs/BinaryFile']);
+            }
+            appendTerminal(`[info] Switched testbench to: ${e.target.value}`);
+        });
+    }
+
+    // ==========================================
+    //  MISSION & SCAFFOLDING LOGIC
+    // ==========================================
+
+    function updateArchitectureView(level) {
+        const svgDoc = document.getElementById('pipeline-svg')?.contentDocument || document;
+
+        const setOpacity = (id, val) => {
+            const el = svgDoc.getElementById(id);
+            if(el) el.setAttribute('opacity', val);
+        };
+
+        const fwdOpacity = (level >= 2) ? '1' : '0';
+        setOpacity('box-fwd-unit', fwdOpacity);
+        setOpacity('txt-fwd-status', fwdOpacity);
+        setOpacity('wire-mem-fwd', fwdOpacity);
+        setOpacity('wire-wb-fwd', fwdOpacity);
+        setOpacity('wire-fwd-a', fwdOpacity);
+        setOpacity('wire-fwd-b', fwdOpacity);
+
+        const branchOpacity = (level >= 3) ? '1' : '0';
+        setOpacity('wire-branch', branchOpacity);
+        setOpacity('txt-branch-target', branchOpacity);
+
+        const chkHaz = document.getElementById('chk-haz');
+        if (chkHaz) chkHaz.disabled = (level < 3);
+    }
+
+    function renderFileExplorer(level) {
+        const treeContent = document.querySelector('.tree-content');
+        if (!treeContent) return;
+
+        let html = `
+            <div class="tree-item"><span class="icon">▸</span> src</div>
+            <div class="tree-item indent-1"><span class="icon">▸</span> main</div>
+            <div class="tree-item indent-2"><span class="icon">▸</span> scala</div>
+        `;
+
+        for (const path of Object.keys(codes)) {
+            if (path.endsWith('.scala')) {
+                const filename = path.split('/').pop();
+                const safeId = filename.replace(/\./g, '-');
+                const isActive = (path === currentFile) ? 'active' : '';
+                html += `<div class="tree-item indent-3 ${isActive}" id="tree-${safeId}" onclick="switchTab('${path}')"><span class="icon">•</span> ${filename}</div>`;
+            }
+        }
+
+        html += `
+            <div class="tree-item indent-1" style="margin-top: 10px;"><span class="icon">▸</span> test</div>
+            <div class="tree-item indent-2"><span class="icon">▸</span> programs</div>
+        `;
+
+        if (codes['src/test/programs/BinaryFile'] !== undefined) {
+            const isActiveAsm = ('src/test/programs/BinaryFile' === currentFile) ? 'active' : '';
+            html += `<div class="tree-item indent-3 ${isActiveAsm}" id="tree-BinaryFile" onclick="switchTab('src/test/programs/BinaryFile')"><span class="icon">•</span> BinaryFile</div>`;
+        }
+
+        treeContent.innerHTML = html;
+    }
+
+    initWorkspace();
+</script>
+</body>
+</html>
