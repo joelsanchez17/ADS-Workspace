@@ -10,19 +10,6 @@ if ! command -v python3 >/dev/null 2>&1; then
     exit 1
 fi
 
-if [ ! -x "$VENV_DIR/bin/python" ]; then
-    if ! python3 -m venv "$VENV_DIR"; then
-        echo "Error: Python virtual-environment support is unavailable." >&2
-        echo "On Ubuntu/Debian, install it with:" >&2
-        echo "  sudo apt update && sudo apt install python3-venv" >&2
-        echo "Then run ./scripts/setup.sh again." >&2
-        exit 1
-    fi
-fi
-
-"$VENV_DIR/bin/python" -m pip install --upgrade pip
-"$VENV_DIR/bin/python" -m pip install -r "$PROJECT_ROOT/requirements.txt"
-
 if [ -x "$PROJECT_ROOT/.tools/jdk/bin/java" ]; then
     JAVA_CMD="$PROJECT_ROOT/.tools/jdk/bin/java"
     export JAVA_HOME="$PROJECT_ROOT/.tools/jdk"
@@ -51,9 +38,22 @@ fi
 
 if [ -z "$JAVA_CMD" ] || [ -z "$SBT_CMD" ]; then
     echo >&2
-    echo "Setup incomplete: the Python environment is ready, but Chisel simulation prerequisites are missing." >&2
+    echo "Setup incomplete: install the missing Chisel simulation prerequisites, then run this script again." >&2
     exit 1
 fi
+
+if [ ! -x "$VENV_DIR/bin/python" ]; then
+    if ! python3 -m venv "$VENV_DIR"; then
+        echo "Error: Python virtual-environment support is unavailable." >&2
+        echo "On Ubuntu/Debian, install it with:" >&2
+        echo "  sudo apt update && sudo apt install python3-venv" >&2
+        echo "Then run ./scripts/setup.sh again." >&2
+        exit 1
+    fi
+fi
+
+"$VENV_DIR/bin/python" -m pip install --upgrade pip
+"$VENV_DIR/bin/python" -m pip install -r "$PROJECT_ROOT/requirements.txt"
 
 "$JAVA_CMD" -version
 "$SBT_CMD" --script-version

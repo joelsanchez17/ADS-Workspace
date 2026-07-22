@@ -116,11 +116,13 @@ The application is a debugging aid rather than a processor generator. Students s
 The host requires Python~3 with virtual-environment support, a compatible Java Development Kit, SBT, and internet access for initial dependency resolution. JDK~17 and SBT~1.9.7 were used for final validation. The repository is obtained and prepared with Listing~\ref{lst:quick-install}.
 
 \begin{lstlisting}[style=terminal,caption={Clone, setup, and startup commands.},label={lst:quick-install}]
-git clone git@github.com:RPTU-EIS/RISCV-pipeline-vizualizer.git
+git clone https://github.com/RPTU-EIS/RISCV-pipeline-vizualizer.git
 cd RISCV-pipeline-vizualizer
 ./scripts/setup.sh
 ./scripts/run.sh
 \end{lstlisting}
+
+If GitHub SSH access is already configured, the equivalent clone command is \texttt{git clone git@github.com:RPTU-EIS/RISCV-pipeline-vizualizer.git}.
 
 The setup script determines the repository root from its own location, creates or reuses \texttt{.venv}, and installs the pinned packages from \texttt{requirements.txt}. It then checks Java and SBT and reports whether the complete simulation environment is ready. Missing prerequisites produce a nonzero exit status and an installation command or official download link; the script does not silently download a JDK or SBT. The first SBT dependency resolution requires an internet connection and can take appreciably longer than later starts. Running \texttt{sbt --batch update} once is therefore recommended before a class~\cite{sbt-docs}.
 
@@ -191,7 +193,7 @@ The visual model follows the classic IF, ID, EX, MEM, and WB organization shown 
 
 \begin{figure}[tb]
   \centering
-  \includegraphics[width=\textwidth,trim=8bp 677bp 8bp 8bp,clip]{five_stage_pipeline.pdf}
+  \includegraphics[width=\textwidth,trim=8bp 630bp 8bp 8bp,clip]{five_stage_pipeline.pdf}
   \caption{Simplified five-stage datapath and hazard paths. Dashed paths represent forwarding; control and load-use decisions can redirect, hold, flush, or inject a bubble.}
   \label{fig:pipeline}
 \end{figure}

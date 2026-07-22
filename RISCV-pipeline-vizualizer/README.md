@@ -47,10 +47,16 @@ Install SBT using its [official instructions](https://www.scala-sbt.org/download
 ## Quick installation
 
 ```bash
-git clone git@github.com:RPTU-EIS/RISCV-pipeline-vizualizer.git
+git clone https://github.com/RPTU-EIS/RISCV-pipeline-vizualizer.git
 cd RISCV-pipeline-vizualizer
 ./scripts/setup.sh
 ./scripts/run.sh
+```
+
+If GitHub SSH access is already configured, the equivalent SSH clone command is:
+
+```bash
+git clone git@github.com:RPTU-EIS/RISCV-pipeline-vizualizer.git
 ```
 
 Open <http://localhost:8080>. The default listener is restricted to the local computer.

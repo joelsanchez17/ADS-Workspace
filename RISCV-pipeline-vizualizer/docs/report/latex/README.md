@@ -12,7 +12,7 @@ The script locates the repository dynamically and writes:
 docs/report/RISCV_PIPELINE_VISUALIZER_REPORT.pdf
 ```
 
-It uses `tectonic` from `PATH` when available, or the project-local `.tools/tectonic/tectonic` binary used during final validation. Tectonic downloads its TeX bundle on the first build, so that build needs internet access. The validated version was Tectonic 0.16.9. The generated diagram PDFs are kept in `docs/report/assets/diagrams/`; their editable Mermaid sources are in `docs/report/assets/source/`.
+It uses `tectonic` from `PATH` when available, or the project-local `.tools/tectonic/tectonic` binary used during final validation. Tectonic downloads its TeX bundle on the first build, so that build needs internet access. The validated version was Tectonic 0.16.9. Where Tectonic is unavailable, the script uses `xelatex` and `bibtex` from a standard TeX installation. The generated diagram PDFs are kept in `docs/report/assets/diagrams/`; their editable Mermaid sources are in `docs/report/assets/source/`.
 
 After editing a Mermaid source, regenerate both publication formats with Mermaid CLI, for example:
 

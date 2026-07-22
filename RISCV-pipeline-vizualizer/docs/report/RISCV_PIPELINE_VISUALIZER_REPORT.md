@@ -31,10 +31,16 @@ The application is a debugging aid rather than a processor generator. Students s
 The host requires Python 3 with virtual-environment support, a compatible Java Development Kit, SBT, and internet access for the initial dependency resolution. JDK 17 and SBT 1.9.7 were used for the final validation. The repository is obtained and prepared with:
 
 ```bash
-git clone git@github.com:RPTU-EIS/RISCV-pipeline-vizualizer.git
+git clone https://github.com/RPTU-EIS/RISCV-pipeline-vizualizer.git
 cd RISCV-pipeline-vizualizer
 ./scripts/setup.sh
 ./scripts/run.sh
+```
+
+If GitHub SSH access is already configured, the equivalent SSH clone command is:
+
+```bash
+git clone git@github.com:RPTU-EIS/RISCV-pipeline-vizualizer.git
 ```
 
 `setup.sh` determines the repository root from its own location, creates or reuses `.venv`, and installs the pinned packages from `requirements.txt`. It then checks Java and SBT and reports whether the complete simulation environment is ready. Missing prerequisites produce a nonzero exit status and an installation command or an official download link; the script does not silently download a JDK or SBT. The first SBT dependency resolution requires an internet connection and can take appreciably longer than later starts. Running `sbt --batch update` once is therefore recommended before a class.

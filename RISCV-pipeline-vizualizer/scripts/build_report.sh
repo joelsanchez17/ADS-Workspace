@@ -13,16 +13,29 @@ if command -v tectonic >/dev/null 2>&1; then
     TECTONIC_BIN="$(command -v tectonic)"
 elif [[ -x "$PROJECT_ROOT/.tools/tectonic/tectonic" ]]; then
     TECTONIC_BIN="$PROJECT_ROOT/.tools/tectonic/tectonic"
-else
-    echo "Error: Tectonic is required to build the report." >&2
-    echo "Install it from https://tectonic-typesetting.github.io/ or place it at .tools/tectonic/tectonic." >&2
-    exit 1
 fi
 
-(
-    cd "$LATEX_DIR"
-    "$TECTONIC_BIN" --outdir "$BUILD_DIR" main.tex
-)
+if [[ -n "${TECTONIC_BIN:-}" ]]; then
+    (
+        cd "$LATEX_DIR"
+        "$TECTONIC_BIN" --outdir "$BUILD_DIR" main.tex
+    )
+elif command -v xelatex >/dev/null 2>&1 && command -v bibtex >/dev/null 2>&1; then
+    (
+        cd "$LATEX_DIR"
+        xelatex -interaction=nonstopmode -halt-on-error -output-directory="$BUILD_DIR" main.tex
+        (
+            cd "$BUILD_DIR"
+            BIBINPUTS="$LATEX_DIR:" bibtex main
+        )
+        xelatex -interaction=nonstopmode -halt-on-error -output-directory="$BUILD_DIR" main.tex
+        xelatex -interaction=nonstopmode -halt-on-error -output-directory="$BUILD_DIR" main.tex
+    )
+else
+    echo "Error: Tectonic or XeLaTeX with BibTeX is required to build the report." >&2
+    echo "Install Tectonic from https://tectonic-typesetting.github.io/, or install a TeX distribution that provides xelatex and bibtex." >&2
+    exit 1
+fi
 
 cp -f "$BUILD_DIR/main.pdf" "$OUTPUT_FILE"
 echo "Report written to: $OUTPUT_FILE"
