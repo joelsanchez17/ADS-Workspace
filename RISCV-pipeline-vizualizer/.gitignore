@@ -20,5 +20,6 @@ test_run_dir/
 *.anno.json
 
 # IDE
+.bsp/
 .idea/
 .vscode/

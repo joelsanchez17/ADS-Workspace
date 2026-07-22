@@ -22,7 +22,8 @@ def find_project_root() -> Path:
 
 
 PROJECT_ROOT = find_project_root()
-DATA_DIR = PROJECT_ROOT / "docs" / "report" / "assets" / "data"
+SUMMARY_DIR = PROJECT_ROOT / "docs" / "report" / "assets" / "data"
+RAW_DATA_DIR = PROJECT_ROOT / "docs" / "report" / "internal" / "validation-data"
 LEVEL_SOURCES = {
     1: PROJECT_ROOT / "course_material" / "task3_level1" / "solution" / "src",
     2: PROJECT_ROOT / "course_material" / "task4_level2" / "solution" / "src",
@@ -106,8 +107,8 @@ def run_level(base_url: str, level: int, max_cycles: int) -> tuple[list[dict], d
 
 
 def write_outputs(level: int, snapshots: list[dict], summary: dict) -> None:
-    DATA_DIR.mkdir(parents=True, exist_ok=True)
-    (DATA_DIR / f"level{level}_snapshots.json").write_text(
+    RAW_DATA_DIR.mkdir(parents=True, exist_ok=True)
+    (RAW_DATA_DIR / f"level{level}_snapshots.json").write_text(
         json.dumps({"summary": summary, "snapshots": snapshots}, indent=2) + "\n"
     )
 
@@ -115,7 +116,7 @@ def write_outputs(level: int, snapshots: list[dict], summary: dict) -> None:
         "cycle", "core_done", "if_pc", "if_asm", "id_asm", "ex_asm", "mem_asm", "wb_asm",
         "fwd_a", "fwd_b", "if_stall", "id_stall", "flush", "wb_we", "wb_rd", "wb_wdata",
     ]
-    with (DATA_DIR / f"level{level}_cycles.csv").open("w", newline="") as handle:
+    with (RAW_DATA_DIR / f"level{level}_cycles.csv").open("w", newline="") as handle:
         writer = csv.DictWriter(handle, fieldnames=fields)
         writer.writeheader()
         for packet in snapshots:
@@ -156,7 +157,8 @@ def main() -> None:
         write_outputs(level, snapshots, summary)
         summaries.append(summary)
         print(json.dumps(summary, indent=2))
-    (DATA_DIR / "validation_summary.json").write_text(json.dumps(summaries, indent=2) + "\n")
+    SUMMARY_DIR.mkdir(parents=True, exist_ok=True)
+    (SUMMARY_DIR / "validation_summary.json").write_text(json.dumps(summaries, indent=2) + "\n")
     print(f"Validated {len(summaries)} level(s) in {time.monotonic() - started:.1f} seconds")
 
 

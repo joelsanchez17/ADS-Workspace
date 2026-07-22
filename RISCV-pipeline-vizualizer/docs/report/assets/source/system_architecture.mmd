@@ -1,40 +1,33 @@
-flowchart LR
-    User([User]) --> Browser[Browser IDE<br/>editor, pipeline, registers, logs]
-
-    subgraph Web[Python ASGI application]
-        API[FastAPI<br/>HTTP routes]
-        WS[Socket.IO<br/>rooms and cycle control]
-        Detect[Upload filtering<br/>and level detection]
-        Enrich[Snapshot enrichment<br/>and history]
-        Bridge[ChiselBridge<br/>TCP client]
+%%{init: {"themeVariables": {"fontSize": "18px", "fontFamily": "Arial"}, "flowchart": {"nodeSpacing": 45, "rankSpacing": 55}}}%%
+flowchart TB
+    subgraph UI[Teaching interface]
+        direction LR
+        User([Student or instructor]) --> Browser[Browser<br/>editor, pipeline, registers, logs]
+        Browser --> Surfer[Bundled Surfer viewer]
     end
 
-    subgraph Session[Per-session execution]
-        Workspace[(Session workspace<br/>uploaded Scala + BinaryFile)]
-        SBT[SBT 1.9.7<br/>chiseltest]
-        Test[LivePipelineTest<br/>TCP server + VCD generation]
-        Core[Uploaded Chisel<br/>processor]
-        VCD[(VCD waveform)]
+    subgraph Web[Python orchestration]
+        direction LR
+        Backend[FastAPI and Socket.IO<br/>upload, detection, sessions, history] --> Bridge[ChiselBridge<br/>TCP client]
     end
 
-    Browser -->|upload and compile<br/>HTTP/JSON| API
-    Browser <-->|commands, logs,<br/>processed snapshots| WS
-    API --> Detect --> Workspace
-    API -->|launch process| SBT
-    Workspace --> SBT --> Test --> Core
-    WS --> Enrich --> Bridge
-    Bridge <-->|line commands and<br/>JSON snapshots| Test
-    Enrich --> WS
-    Test --> VCD
-    API -->|serve /vcd/session| VCD
-    Browser --> Surfer[Bundled Surfer<br/>waveform viewer]
-    Surfer -->|load waveform| API
+    subgraph Session[Per-session simulation]
+        direction LR
+        Workspace[(Workspace<br/>Scala + BinaryFile)] --> SBT[SBT + chiseltest]
+        SBT --> Test[LivePipelineTest +<br/>Chisel processor] --> VCD[(VCD waveform)]
+    end
+
+    Browser <-->|HTTP and Socket.IO| Backend
+    Backend --> Workspace
+    Bridge <-->|commands and snapshots| Test
+    Surfer -->|session VCD request| Backend
+    Backend --> VCD
 
     classDef user fill:#eef5ff,stroke:#2f6fad,color:#17202a;
     classDef python fill:#e8f1fb,stroke:#4a90e2,color:#17202a;
     classDef session fill:#eef8ee,stroke:#4f8a4f,color:#17202a;
     classDef data fill:#fff5df,stroke:#b9852d,color:#17202a;
     class User,Browser,Surfer user;
-    class API,WS,Detect,Enrich,Bridge python;
-    class SBT,Test,Core session;
+    class Backend,Bridge python;
+    class SBT,Test session;
     class Workspace,VCD data;

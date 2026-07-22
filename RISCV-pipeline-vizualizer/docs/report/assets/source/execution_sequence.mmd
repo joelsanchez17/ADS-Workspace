@@ -1,37 +1,27 @@
+%%{init: {"themeVariables": {"fontSize": "18px", "fontFamily": "Arial"}, "sequence": {"actorFontSize": 18, "messageFontSize": 17}}}%%
 sequenceDiagram
-    autonumber
-    actor User
-    participant Browser
-    participant API as FastAPI
+    actor Browser as Student / Browser
+    participant Backend as FastAPI + Socket.IO
     participant Session as Session workspace
-    participant SBT as SBT/chiseltest
-    participant Test as LivePipelineTest
+    participant Build as SBT / chiseltest
+    participant Processor as LivePipelineTest / Chisel processor
     participant Bridge as ChiselBridge
-    participant WS as Socket.IO
 
-    User->>Browser: Select project src folder
-    Browser->>API: POST /upload_and_detect (source map)
-    API->>API: Filter paths and detect level
-    API-->>Browser: Accepted sources, level, system BinaryFile
-    User->>Browser: Select system or custom BinaryFile and compile
-    Browser->>WS: Join session room
-    Browser->>API: POST /compile
-    API->>Session: Copy scaffold, write Scala and BinaryFile
-    API->>SBT: Launch controlled live test suite
-    SBT->>Test: Elaborate and run Chisel tests
-    Test->>Test: Generate VCD (headless test)
-    Test-->>Bridge: Open session-specific TCP server
-    Bridge->>Test: Connect, consume initial snapshot, reset
-    Test-->>Bridge: Cycle-0 JSON snapshot
-    Bridge-->>API: Initial processor state
-    API-->>Browser: Compilation succeeded
-    Browser->>WS: init / step command
-    WS->>Bridge: step
-    Bridge->>Test: "step" line
-    Test->>Test: Advance clock one cycle
-    Test-->>Bridge: JSON snapshot
-    Bridge->>API: Raw snapshot
-    API->>API: Decode instructions and append history
-    API->>WS: Processed update + cycle log
-    WS-->>Browser: Session-room event
-    Browser->>Browser: Update SVG, registers, and console
+    Browser->>Backend: Upload project src folder
+    Backend->>Backend: Filter files and detect course level
+    Backend-->>Browser: Accepted sources and system BinaryFile
+    Browser->>Backend: Compile with selected BinaryFile
+    Backend->>Session: Stage scaffold, Scala sources, and BinaryFile
+    Backend->>Build: Launch controlled test suite
+    Build->>Processor: Elaborate processor and generate VCD
+    Processor-->>Bridge: Open TCP endpoint and initial snapshot
+    Bridge-->>Backend: Initial processor state
+    Backend-->>Browser: Compilation succeeded
+    loop Each requested cycle
+        Browser->>Backend: Initialize or step
+        Backend->>Bridge: Forward command
+        Bridge->>Processor: Advance one clock cycle
+        Processor-->>Bridge: JSON debug snapshot
+        Bridge-->>Backend: Raw processor state
+        Backend-->>Browser: Decoded snapshot and cycle log
+    end

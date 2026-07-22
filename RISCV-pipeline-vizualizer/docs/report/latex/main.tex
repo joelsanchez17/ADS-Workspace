@@ -45,14 +45,14 @@
 \pagestyle{fancy}
 \fancyhf{}
 \fancyhead[L]{RISC-V Pipeline Visualizer}
-\fancyhead[R]{Technical Report}
+\fancyhead[R]{Master Project}
 \fancyfoot[C]{\thepage}
 \renewcommand{\headrulewidth}{0.3pt}
 
 \hypersetup{
   pdftitle={Architecture and Operation of a Web-Based RISC-V Pipeline Debugging Environment},
-  pdfauthor={[Author name]},
-  pdfsubject={RISC-V pipeline teaching and debugging environment},
+  pdfauthor={Joel Agustín Sanchez},
+  pdfsubject={Master Project - RISC-V Pipeline Visualizer},
   pdfkeywords={RISC-V, Chisel, pipeline, visualization, teaching}
 }
 
@@ -66,14 +66,17 @@
   \vspace{1.8cm}
   {\huge\bfseries Architecture and Operation of a Web-Based RISC-V Pipeline Debugging Environment\par}
   \vspace{1cm}
-  {\Large Technical Report\par}
+  {\Large Master Project\par}
   \vfill
-  \begin{tabular}{@{}rl@{}}
-    Author: & [Author name] \\
-    Supervisor: & [Supervisor name] \\
-    Chair / Department: & [Chair or department] \\
-    Institution: & RPTU Kaiserslautern-Landau \\
-    Date: & [Submission date]
+  \begin{tabular}{@{}r@{\hspace{1em}}l@{}}
+    Author: & Joel Agustín Sanchez \\
+    Supervisor: & \href{https://eit.rptu.de/fgs/eis/people/jauch}{M.Sc. Tobias Jauch} (PhD student) \\
+    Chair: & \href{https://eit.rptu.de/fgs/eis}{\begin{tabular}[t]{@{}l@{}}
+      LEHRSTUHL FÜR ENTWURF \\
+      INFORMATIONSTECHNISCHER SYSTEME \\
+      CHAIR OF ELECTRONIC DESIGN AUTOMATION
+    \end{tabular}} \\
+    Submission date: & 23 July 2026
   \end{tabular}
   \vfill
 \end{titlepage}
@@ -168,7 +171,7 @@ The system has three cooperating layers, summarized in Figure~\ref{fig:architect
 
 \begin{figure}[tb]
   \centering
-  \includegraphics[width=\textwidth,trim=8bp 620bp 8bp 8bp,clip]{system_architecture.pdf}
+  \includegraphics[width=\textwidth,trim=10bp 386bp 10bp 10bp,clip]{system_architecture.pdf}
   \caption{System architecture. HTTP handles upload, compilation, static content, and VCD delivery; Socket.IO carries cycle commands and updates; a per-session testbench process runs the uploaded processor.}
   \label{fig:architecture}
 \end{figure}
@@ -185,7 +188,7 @@ The visual model follows the classic IF, ID, EX, MEM, and WB organization shown 
 
 \begin{figure}[tb]
   \centering
-  \includegraphics[width=\textwidth,trim=8bp 670bp 8bp 8bp,clip]{five_stage_pipeline.pdf}
+  \includegraphics[width=\textwidth,trim=8bp 677bp 8bp 8bp,clip]{five_stage_pipeline.pdf}
   \caption{Simplified five-stage datapath and hazard paths. Dashed paths represent forwarding; control and load-use decisions can redirect, hold, flush, or inject a bubble.}
   \label{fig:pipeline}
 \end{figure}
@@ -202,14 +205,21 @@ The complete request sequence is shown in Figure~\ref{fig:sequence}. Upload and 
 
 \begin{figure}[tb]
   \centering
-  \includegraphics[width=\textwidth,trim=30bp 428bp 17bp 7bp,clip]{execution_sequence.pdf}
+  \includegraphics[width=\textwidth,trim=24bp 487bp 20bp 7bp,clip]{execution_sequence.pdf}
   \caption{Execution sequence from source selection to a rendered cycle. The controlled testbench advances the clock and returns one JSON snapshot for each step command.}
   \label{fig:sequence}
 \end{figure}
 
 Path filtering at upload time accepts project material required for the exercise and rejects unrelated traversal. During workspace preparation, browser-visible messages refer to \texttt{[WORKSPACE]} or logical repository locations so that local account and machine paths do not leak into the interface. Server diagnostics may retain absolute paths when needed for administration. A failed Scala compilation still returns its explanation and relevant SBT output after sanitization.
 
-The testbench first performs the existing headless run that produces a VCD. It then starts the interactive TCP loop, resets the design, and emits the initial state. On each \texttt{step} command it advances the clock, samples the debug bundle, serializes the fields, and sends one line of JSON. The Python service decodes instruction words for presentation, appends the snapshot to session history, and emits an update. This protocol keeps the simulator deterministic from the user's perspective: one accepted command corresponds to one displayed cycle.
+The testbench first performs the existing headless run that produces a VCD. The service delivers this file through a session-specific endpoint, allowing the bundled Surfer viewer to complement the simplified pipeline display with signal-level timing, as shown in Figure~\ref{fig:waveform}. The testbench then starts the interactive TCP loop, resets the design, and emits the initial state. On each \texttt{step} command it advances the clock, samples the debug bundle, serializes the fields, and sends one line of JSON. The Python service decodes instruction words for presentation, appends the snapshot to session history, and emits an update. This protocol keeps the simulator deterministic from the user's perspective: one accepted command corresponds to one displayed cycle.
+
+\begin{figure}[tbp]
+  \centering
+  \includegraphics[width=0.88\textwidth]{waveform_view.png}
+  \caption{Generated Level~4 waveform displayed in the bundled Surfer viewer. The selected clock and processor debug signals complement the cycle-level pipeline representation.}
+  \label{fig:waveform}
+\end{figure}
 
 The current design deliberately preserves the supplied simulation structure and VCD limits. It also preserves processor semantics; forwarding, stalls, branches, memory behavior, and instruction coverage are properties of the uploaded course core and controlled infrastructure, not of the web interface.
 
@@ -219,53 +229,32 @@ Final regression tests exercised uploads for Levels~1 through~4 and completed re
 
 Figure~\ref{fig:hazards} isolates the mechanisms most useful in a teaching discussion. In the forwarding example, both EX operand selectors are active for the dependent arithmetic instruction at cycle~3. At Level~3 cycle~7, a taken \texttt{beq} in EX redirects the fetch address and asserts the flush. At Level~4 cycle~41, a load-use dependency disables the program-counter write, holds IF/ID, and inserts a bubble.
 
-\begin{figure}[p]
+\begin{figure}[tbp]
   \centering
-  \begin{subfigure}{0.82\textwidth}
+  \begin{subfigure}[t]{0.48\textwidth}
     \centering
-    \includegraphics[width=\linewidth,height=0.19\textheight,keepaspectratio]{level2_forwarding_cycle_03.png}
+    \includegraphics[width=\linewidth,trim=188bp 168bp 0bp 83bp,clip]{level2_forwarding_cycle_03.png}
     \caption{Level~2 forwarding, cycle~3.}
-  \end{subfigure}\par\medskip
-  \begin{subfigure}{0.82\textwidth}
+  \end{subfigure}\hfill
+  \begin{subfigure}[t]{0.48\textwidth}
     \centering
-    \includegraphics[width=\linewidth,height=0.19\textheight,keepaspectratio]{level3_branch_flush_cycle_07.png}
+    \includegraphics[width=\linewidth]{level3_branch_flush_cycle_07.png}
     \caption{Level~3 taken branch and flush, cycle~7.}
   \end{subfigure}\par\medskip
-  \begin{subfigure}{0.82\textwidth}
+  \begin{subfigure}[t]{0.48\textwidth}
     \centering
-    \includegraphics[width=\linewidth,height=0.19\textheight,keepaspectratio]{level4_load_use_stall_cycle_41.png}
+    \includegraphics[width=\linewidth]{level4_load_use_stall_cycle_41.png}
     \caption{Level~4 load-use stall, cycle~41.}
   \end{subfigure}
-  \caption{Representative hazard behavior from the system BinaryFile for each detected level. The screenshots were captured at a 1440 by 900 CSS-pixel viewport from the working tree based on revision \texttt{ff31871}.}
+  \caption{Representative hazard behavior: data forwarding, control-hazard flushing, and a load-use stall.}
   \label{fig:hazards}
 \end{figure}
 
-The regression also checked the complete browser path: the landing page loaded, Socket.IO connected, hazard rendering remained active, the toolbar stayed aligned after removal of the nonfunctional Datapath control, and the browser made no request for the removed \texttt{/workspace} route or obsolete \texttt{client.js}. Successful and intentionally failed compilations did not expose an absolute user path. The Level~4 VCD was served successfully and loaded by the bundled Surfer application.
+Together, the panels show that the same stage view can explain three distinct responses to dependency and control-flow conditions. Forwarding changes the EX operand source without interrupting instruction issue. A taken branch redirects fetch and invalidates younger fall-through instructions. The load-use case instead holds the front of the pipeline for one cycle because the required memory value is not yet available. The register panel and highlighted paths connect each control decision to the architectural state observed by the student.
 
 \section{Maintenance and future development}\label{sec:maintenance}
 
-The repository separates entry, orchestration, presentation, simulation, and teaching material closely enough that most changes have a clear starting point. Table~\ref{tab:implementation-map} gives the principal extension points.
-
-\begin{table}[tb]
-\centering
-\caption{Principal implementation and maintenance files.}
-\label{tab:implementation-map}
-\small
-\begin{tabularx}{\textwidth}{@{}p{0.39\textwidth}Y@{}}
-\toprule
-Path & Responsibility \\
-\midrule
-\path{web_demo.py} & Local entry point and browser-address reporting. \\
-\path{web_visualizer/server.py} & HTTP/Socket.IO API, filtering, detection, staging, process launch, history, and VCD delivery. \\
-\path{web_visualizer/bridge.py} & TCP command and snapshot exchange with the Scala testbench. \\
-\path{web_visualizer/templates/index.html} & Interface, editor, controls, rendering logic, and student terminology. \\
-\path{web_visualizer/static/pipeline.svg} & Visual structure and element identifiers used by the renderer. \\
-\path{infrastructure_template/src/test/scala/LivePipelineTest.scala} & Controlled headless and interactive chiseltest behavior, snapshot schema, and VCD production. \\
-\path{course_material/} & Reference sources for the staged course levels. \\
-\path{infrastructure_template/system_tests/} & Level-specific hexadecimal BinaryFiles and test inputs. \\
-\bottomrule
-\end{tabularx}
-\end{table}
+The repository separates entry, orchestration, presentation, simulation, and teaching material closely enough that most changes have a clear starting point. The principal files and directories are summarized in Appendix~\ref{app:implementation-map}; the most important boundary is between the Python session service and the Scala testbench.
 
 Changes crossing the Python/Scala boundary require particular care: a renamed JSON field must be updated in the testbench, bridge processing, history, and browser renderer. A new visible pipeline signal normally requires a Chisel debug output, snapshot serialization, server enrichment if needed, and a matching SVG/JavaScript binding. Changes to level detection should be tested against representative source trees and remain a server decision.
 
@@ -279,8 +268,32 @@ The RISC-V Pipeline Visualizer makes a student's clocked processor behavior insp
 \bibliography{references}
 \addcontentsline{toc}{section}{References}
 
+\clearpage
 \appendix
-\section{Validation boundary}
+\section{Implementation map}\label{app:implementation-map}
+
+\begin{center}
+\centering
+\captionof{table}{Principal implementation and maintenance files.}
+\label{tab:implementation-map}
+\footnotesize
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{0.43\textwidth}Y@{}}
+\toprule
+Path & Responsibility \\
+\midrule
+\path{web_demo.py} & Local entry point and browser-address reporting. \\
+\path{web_visualizer/server.py} & HTTP/Socket.IO API, filtering, detection, staging, process launch, history, and VCD delivery. \\
+\path{web_visualizer/bridge.py} & TCP command and snapshot exchange with the Scala testbench. \\
+\path{web_visualizer/templates/index.html} & Interface, editor, controls, rendering logic, and student terminology. \\
+\path{web_visualizer/static/pipeline.svg} & Visual structure and element identifiers used by the renderer. \\
+\path{infrastructure_template/src/test/scala/LivePipelineTest.scala} & Controlled headless and interactive chiseltest behavior, snapshot schema, and VCD production. \\
+\path{course_material/} & Reference sources for the staged course levels. \\
+\path{infrastructure_template/system_tests/} & Level-specific hexadecimal BinaryFiles and test inputs. \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\section{Scope of validation}
 
 The final regression used the supplied system BinaryFiles and completed all four detected course levels. It checked shell and Python syntax, setup and startup from outside the repository, upload and detection, compilation without a client-supplied level, interactive stepping, pipeline and register rendering, hazard overlays, sanitized browser messages, VCD delivery, and Surfer loading. Processor ISA conformance beyond the supplied programs and existing Scala tests was not re-certified. Multi-user load, malicious uploads, and public deployment were not tested because they are outside the trusted local teaching scope.
 

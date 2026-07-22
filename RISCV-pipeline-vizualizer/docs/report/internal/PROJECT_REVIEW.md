@@ -2,7 +2,7 @@
 
 ## Review scope and evidence
 
-This review covers the repository root, with `web_demo.py` treated as the main application entry point. Generated artifacts, caches, and the bundled third-party Surfer implementation were identified but not analyzed line by line. It incorporates the subsequent provisioned-environment validation documented in `ENVIRONMENT_AND_VALIDATION.md`; the publication-ready synthesis is `RISCV_PIPELINE_VISUALIZER_REPORT.md`.
+This review covers the repository root, with `web_demo.py` treated as the main application entry point. Generated artifacts, caches, and the bundled third-party Surfer implementation were identified but not analyzed line by line. It incorporates the subsequent provisioned-environment validation documented in `ENVIRONMENT_AND_VALIDATION.md`; the publication-ready synthesis is `../RISCV_PIPELINE_VISUALIZER_REPORT.md`.
 
 The following evidence labels are used:
 
@@ -243,14 +243,14 @@ Session state is held in the process-local `active_sessions` dictionary as the S
 - `images/processor_architecture.png` is a useful conceptual diagram for the full infrastructure but is not generated from the current code and is denser than the browser SVG.
 - Skeleton and solution course directories are intentional teaching/reference variants, not duplicate production implementations. For web compilation, solution folders mainly provide build scaffolding; uploaded `src/main/scala` replaces the reference hardware.
 - `riscv-tests_modified_files` is an external test-suite patch workflow. It is not invoked by `web_demo.py` or the web compile route.
-- `.bsp/sbt.json` is IDE metadata. Root `build.sbt` supports local Scala work but web sessions build from copied templates.
+- `.bsp/sbt.json` was machine-specific IDE metadata and was removed during final transfer cleanup; `.bsp/` is ignored. Root `build.sbt` supports local Scala work, while web sessions build from copied templates.
 - `web_visualizer/static/landing/Screenshot_2026-06-17_17-34-22.png` shows an older title/text and should be recaptured before final publication. `landing-preview.png` is a useful existing pipeline illustration.
 
 ## Tests and validation assets
 
 The repository contains Scala/chiseltest suites in each course skeleton/solution and the controlled `LivePipelineTest`. The course suites test arithmetic, forwarding, and branch behavior with cycle-level expectations. There are no Python backend tests, frontend unit/end-to-end tests, API tests, or automated level-detection/path-safety tests.
 
-The provisioned validation exercised the complete path from HTTP upload through SBT/chiseltest and the TCP bridge to browser rendering. Representative programs for Levels 1–4 reached `coreDone`; raw snapshots and cycle/event summaries are retained in `assets/data/`. The browser captures and waveform view are retained in `assets/screenshots/`. Concurrently compiling several sessions can retain substantial JVM memory and delay later jobs, so this is a resource-scaling concern rather than a functional validation target.
+The provisioned validation exercised the complete path from HTTP upload through SBT/chiseltest and the TCP bridge to browser rendering. Representative programs for Levels 1–4 reached `coreDone`; raw snapshots and cycle CSV files are retained in `validation-data/`, while compact summaries remain in `../assets/data/`. The browser captures and waveform view are retained in `../assets/screenshots/`. Concurrently compiling several sessions can retain substantial JVM memory and delay later jobs, so this is a resource-scaling concern rather than a functional validation target.
 
 ## Useful demonstration programs
 

@@ -65,7 +65,7 @@ The event totals demonstrate that the expected mechanisms were exercised. They a
 
 ## Figures and screenshot privacy
 
-Affected screenshots were recaptured at a 1440 by 900 CSS-pixel viewport. Metadata is stored in `assets/data/screenshot_metadata.json` with base revision, level, system BinaryFile, cycle, and capture environment. Browser profiles, usernames, hostnames, notifications, and absolute paths are absent. The editable Mermaid sources in `assets/source/` were exported to both SVG and tightly cropped PDF publication formats in `assets/diagrams/`.
+Affected screenshots were recaptured at a 1440 by 900 CSS-pixel viewport. Metadata is stored in `../assets/data/screenshot_metadata.json` with base revision, level, system BinaryFile, cycle, and capture environment. Browser profiles, usernames, hostnames, notifications, and absolute paths are absent. The editable Mermaid sources in `../assets/source/` were exported to both SVG and tightly cropped PDF publication formats in `../assets/diagrams/`.
 
 ## Report build and inspection
 
@@ -77,9 +77,9 @@ Affected screenshots were recaptured at a 1440 by 900 CSS-pixel viewport. Metada
 | Main text | 8 pages, excluding title, contents, references, and appendix material |
 | Media box | 595.28 × 841.89 points (A4) |
 | Title metadata | `Architecture and Operation of a Web-Based RISC-V Pipeline Debugging Environment` |
-| Author metadata | `[Author name]` |
+| Author metadata | `Joel Agustín Sanchez` |
 
-All 11 pages were rendered to 992 by 1403 pixel PNG files at 120 dpi and inspected. The review covered the title page, contents, commands, troubleshooting and maintenance tables, three generated diagrams, landing screenshot, combined hazard figure, bibliography, and appendix. No clipped text, table overflow, broken figure, unresolved reference, or machine path was observed. The main document contains no repository URL placeholder or internal Markdown-to-LaTeX production section. Tectonic reported only non-fatal underfull-box warnings caused by breakable repository paths and bibliography URLs; no overfull box remained.
+All 11 pages were rendered to 1191 by 1684 pixel PNG files at 144 dpi and inspected. The review covered the title page and hyperlinks, contents, commands, troubleshooting and maintenance tables, three generated diagrams, landing screenshot, selected Level 4 waveform signals, combined hazard figure, bibliography, and appendices. No clipped text, table overflow, broken figure, unresolved reference, or machine path was observed. The main document contains no repository URL placeholder or internal Markdown-to-LaTeX production section. Tectonic reported only non-fatal underfull-box warnings in bibliography URLs; no overfull box remained.
 
 ## Validation boundary and future checks
 

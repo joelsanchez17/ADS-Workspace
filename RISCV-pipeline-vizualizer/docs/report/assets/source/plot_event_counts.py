@@ -20,12 +20,13 @@ def find_project_root() -> Path:
 
 ROOT = find_project_root()
 DATA = ROOT / "docs" / "report" / "assets" / "data"
+RAW_DATA = ROOT / "docs" / "report" / "internal" / "validation-data"
 GRAPHS = ROOT / "docs" / "report" / "assets" / "graphs"
 
 
 summaries = []
 for level in range(1, 5):
-    payload = json.loads((DATA / f"level{level}_snapshots.json").read_text())
+    payload = json.loads((RAW_DATA / f"level{level}_snapshots.json").read_text())
     summaries.append(payload["summary"])
 
 (DATA / "validation_summary.json").write_text(json.dumps(summaries, indent=2) + "\n")

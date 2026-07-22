@@ -1,8 +1,8 @@
-# Technical Report Plan
+# Master Project Report Plan
 
 ## Status and deliverable
 
-The plan has been executed in `RISCV_PIPELINE_VISUALIZER_REPORT.md` and its LaTeX counterpart. Its supporting environment record is `ENVIRONMENT_AND_VALIDATION.md`, and all publication assets are indexed in `VISUAL_ASSET_PLAN.md`. This file preserves the editorial rationale for later revision.
+The plan has been executed in `../RISCV_PIPELINE_VISUALIZER_REPORT.md` and its LaTeX counterpart. Its supporting environment record is `ENVIRONMENT_AND_VALIDATION.md`, and all publication assets are indexed in `VISUAL_ASSET_PLAN.md`. This file preserves the editorial rationale for later revision.
 
 ## Title, audience, and scope
 
@@ -38,7 +38,7 @@ The completed Markdown draft is intended to compress to roughly 7–9 pages of m
 
 ## Selected visuals
 
-The main report uses three reproducible Mermaid diagrams, one landing screenshot, and one combined three-panel hazard figure. The Level 2 forwarding, Level 3 branch flush, and Level 4 load-use stall views provide complementary evidence. The waveform screenshot is optional; the event-count graph remains an appendix asset rather than a performance comparison. Source, metadata, exported data, and rendered formats remain together beneath `assets/`.
+The main report uses three reproducible Mermaid diagrams, one landing screenshot, one waveform screenshot, and one combined three-panel hazard figure. The Level 2 forwarding, Level 3 branch flush, and Level 4 load-use stall views provide complementary evidence. The event-count graph remains an internal asset rather than a performance comparison. Publication sources and rendered formats remain beneath `../assets/`; raw cycle exports are retained in `validation-data/`.
 
 ## Toolchain used
 

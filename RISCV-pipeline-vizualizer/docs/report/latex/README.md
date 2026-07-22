@@ -24,4 +24,4 @@ PUPPETEER_EXECUTABLE_PATH=/path/to/chrome \
   -b white
 ```
 
-Replace the visible author, supervisor, chair/department, and submission-date placeholders in `main.tex` before formal submission. The PDF metadata uses the same author placeholder until it is supplied.
+The title-page identity and PDF metadata are maintained in `main.tex`. Hyperlinks on the title page are deliberately rendered without colored boxes or raw URLs.

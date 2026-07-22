@@ -1,5 +1,15 @@
 # Architecture and Operation of a Web-Based RISC-V Pipeline Debugging Environment
 
+**Master Project**
+
+**Author:** Joel Agustín Sanchez
+
+**Supervisor:** [M.Sc. Tobias Jauch](https://eit.rptu.de/fgs/eis/people/jauch) (PhD student)
+
+**Chair:** [LEHRSTUHL FÜR ENTWURF INFORMATIONSTECHNISCHER SYSTEME / CHAIR OF ELECTRONIC DESIGN AUTOMATION](https://eit.rptu.de/fgs/eis)
+
+**Submission date:** 23 July 2026
+
 ## Abstract
 
 This report presents a browser-based environment for teaching and debugging a five-stage RISC-V processor written in Chisel. The application connects an editable view of a student's processor sources to a controlled chiseltest simulation and displays the resulting instruction flow, registers, hazard signals, logs, and waveform data. A Python service manages uploads and isolated session workspaces, while a small TCP bridge exchanges cycle commands and JSON snapshots with the Scala testbench. The design gives students a concrete view of forwarding, stalls, and control-hazard recovery without replacing the processor implementation that they are expected to develop. The report explains installation, classroom use, system structure, representative behavior, and the principal maintenance points. Validation covered all four course levels on Ubuntu 24.04 under WSL2 with Python 3.12, JDK 17, and SBT 1.9.7. The current deployment target is a trusted local teaching environment.
@@ -95,7 +105,9 @@ The complete request sequence is shown below. Upload and compilation use HTTP be
 
 Path filtering at upload time accepts the project material required for the exercise and rejects unrelated traversal. During workspace preparation, browser-visible messages refer to `[WORKSPACE]` or logical repository locations so that local account and machine paths do not leak into the interface. Server diagnostics may retain absolute paths when they are needed for administration. A failed Scala compilation still returns its explanation and the relevant SBT output after sanitization.
 
-The testbench first performs the existing headless run that produces a VCD. It then starts the interactive TCP loop, resets the design, and emits the initial state. On each `step` command it advances the clock, samples the debug bundle, serializes the fields, and sends one line of JSON. The Python service decodes the instruction words for presentation, adds the snapshot to the session history, and emits an update. This protocol keeps the simulator deterministic from the user's perspective: one accepted command corresponds to one displayed cycle.
+The testbench first performs the existing headless run that produces a VCD. The service delivers this file through a session-specific endpoint, allowing the bundled Surfer viewer to complement the simplified pipeline display with signal-level timing. It then starts the interactive TCP loop, resets the design, and emits the initial state. On each `step` command it advances the clock, samples the debug bundle, serializes the fields, and sends one line of JSON. The Python service decodes the instruction words for presentation, adds the snapshot to the session history, and emits an update. This protocol keeps the simulator deterministic from the user's perspective: one accepted command corresponds to one displayed cycle.
+
+![Generated Level 4 waveform displayed in the bundled Surfer viewer. The selected clock and processor debug signals complement the cycle-level pipeline representation.](assets/screenshots/waveform_view.png)
 
 The current design deliberately preserves the supplied simulation structure and VCD limits. It also preserves processor semantics; forwarding, stalls, branches, memory behavior, and instruction coverage are properties of the uploaded course core and its controlled infrastructure, not of the web interface.
 
@@ -109,22 +121,11 @@ The three panels below isolate the mechanisms most useful in a teaching discussi
 | --- | --- | --- |
 | ![Level 2, cycle 3](assets/screenshots/level2_forwarding_cycle_03.png) | ![Level 3, cycle 7](assets/screenshots/level3_branch_flush_cycle_07.png) | ![Level 4, cycle 41](assets/screenshots/level4_load_use_stall_cycle_41.png) |
 
-The regression also checked the complete browser path: the landing page loaded, Socket.IO connected, hazard rendering remained active, the toolbar remained aligned after removing the nonfunctional Datapath control, and the browser made no request for the removed `/workspace` route or obsolete `client.js`. Successful and intentionally failed compilations did not expose an absolute user path. The Level 4 VCD was served successfully and loaded by the bundled Surfer application [7].
+Together, the panels show three distinct responses to dependency and control-flow conditions. Forwarding changes the EX operand source without interrupting instruction issue. A taken branch redirects fetch and invalidates younger fall-through instructions. The load-use case instead holds the front of the pipeline because the required memory value is not yet available. The register panel and highlighted paths connect each control decision to the architectural state observed by the student.
 
 ## 8. Maintenance and future development
 
-The repository separates entry, orchestration, presentation, simulation, and teaching material closely enough that most changes have a clear starting point.
-
-| Path | Maintenance responsibility |
-| --- | --- |
-| `web_demo.py` | Local application entry point and browser-address reporting. |
-| `web_visualizer/server.py` | HTTP/Socket.IO API, upload filtering, level detection, session staging, process launch, history, and VCD delivery. |
-| `web_visualizer/bridge.py` | TCP command/snapshot exchange with the live Scala testbench. |
-| `web_visualizer/templates/index.html` | Browser interface, editor, controls, rendering logic, and student-facing terminology. |
-| `web_visualizer/static/pipeline.svg` | Editable visual structure and element identifiers used by the renderer. |
-| `infrastructure_template/src/test/scala/LivePipelineTest.scala` | Controlled headless and interactive chiseltest behavior, snapshot schema, and VCD production. |
-| `course_material/` | Reference sources used for the staged course levels. |
-| `infrastructure_template/system_tests/` | Level-specific hexadecimal BinaryFiles and test inputs. |
+The repository separates entry, orchestration, presentation, simulation, and teaching material closely enough that most changes have a clear starting point. A compact implementation map is retained in Appendix A; the most important maintenance boundary is between the Python session service and the Scala testbench.
 
 Changes that cross the Python/Scala boundary require particular care: a renamed JSON field must be updated in the testbench, bridge processing, history, and browser renderer. A new visible pipeline signal normally requires a Chisel debug output, snapshot serialization, server enrichment if needed, and a matching SVG/JavaScript binding. Changes to level detection should be tested against representative source trees and should remain a server decision.
 
@@ -144,6 +145,19 @@ The RISC-V Pipeline Visualizer makes a student's clocked processor behavior insp
 6. Socket.IO, *Introduction*. <https://socket.io/docs/v4/>
 7. Surfer Project, *Surfer waveform viewer*. <https://gitlab.com/surfer-project/surfer>
 
-## Appendix A. Validation boundary
+## Appendix A. Implementation map
+
+| Path | Maintenance responsibility |
+| --- | --- |
+| `web_demo.py` | Local application entry point and browser-address reporting. |
+| `web_visualizer/server.py` | HTTP/Socket.IO API, upload filtering, level detection, session staging, process launch, history, and VCD delivery. |
+| `web_visualizer/bridge.py` | TCP command/snapshot exchange with the live Scala testbench. |
+| `web_visualizer/templates/index.html` | Browser interface, editor, controls, rendering logic, and student-facing terminology. |
+| `web_visualizer/static/pipeline.svg` | Editable visual structure and element identifiers used by the renderer. |
+| `infrastructure_template/src/test/scala/LivePipelineTest.scala` | Controlled headless and interactive chiseltest behavior, snapshot schema, and VCD production. |
+| `course_material/` | Reference sources used for the staged course levels. |
+| `infrastructure_template/system_tests/` | Level-specific hexadecimal BinaryFiles and test inputs. |
+
+## Appendix B. Scope of validation
 
 The final regression used the supplied system BinaryFiles and completed all four detected course levels. It checked shell and Python syntax, setup and startup from outside the repository, upload and detection, compilation without a client-supplied level, interactive stepping, pipeline and register rendering, hazard overlays, sanitized browser messages, VCD delivery, and Surfer loading. Processor ISA conformance beyond the supplied programs and existing Scala tests was not re-certified. Multi-user load, malicious uploads, and public deployment were not tested because they are outside the trusted local teaching scope.

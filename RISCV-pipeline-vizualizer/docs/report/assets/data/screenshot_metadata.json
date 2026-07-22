@@ -38,7 +38,7 @@
       "level": 4,
       "binary_file": "infrastructure_template/system_tests/level_4/BinaryFile",
       "cycle": "VCD covers the 51-cycle headless run",
-      "demonstrates": "Bundled Surfer loading the generated Level 4 VCD and exposing the processor hierarchy"
+      "demonstrates": "Bundled Surfer displaying the Level 4 clock, completion, EX destination, stall, and PC-write signals"
     }
   ],
   "privacy_review": "Browser chrome, accounts, notifications, hostnames, and machine-specific paths are absent. Only localhost URLs appear where the waveform source is visible."

@@ -85,7 +85,6 @@
     "stall_cycles": 4,
     "flush_cycles": 6,
     "last_log_lines": [
-      "\u25b6 Cycle 40 | IF: add x27, x26, x25 | EX: sw x25, +12(x0) (ALU: 0xC)",
       "\u25b6 Cycle 41 | IF: jal x0, +12     | EX: lw x26, +12(x0) (ALU: 0xC) | MEM: [0xC] \u2190 0xB6 | WB: x25 \u2190 0xB6 | \u26a0\ufe0f STALL",
       "\u25b6 Cycle 42 | IF: jal x0, +12     | EX: nop             (ALU: 0xFFFFFFFF)",
       "\u25b6 Cycle 43 | IF: addi x28, x0, 28 | EX: add x27, x26, x25 (ALU: 0x16C) | MEM: [0xFFFFFFFF] \u2190 0x0 | WB: x26 \u2190 0xB6",
@@ -96,7 +95,8 @@
       "\u25b6 Cycle 48 | IF: sw x31, +16(x0) | EX: addi x30, x0, 30 (ALU: 0x1E)",
       "\u25b6 Cycle 49 | IF: unknown         | EX: add x31, x30, x1 (ALU: 0x23) | MEM: [0x1E] \u2190 0x0",
       "\u25b6 Cycle 50 | IF: unknown         | EX: sw x31, +16(x0) (ALU: 0x10) | MEM: [0x23] \u2190 0x5 | WB: x30 \u2190 0x1E",
-      "\u25b6 Cycle 51 | IF: unknown         | EX: unknown         (ALU: 0xFFFFFFFF) | MEM: [0x10] \u2190 0x23 | WB: x31 \u2190 0x23"
+      "\u25b6 Cycle 51 | IF: unknown         | EX: unknown         (ALU: 0xFFFFFFFF) | MEM: [0x10] \u2190 0x23 | WB: x31 \u2190 0x23",
+      "Unimplemented opcode (0x73): end of test"
     ]
   }
 ]
