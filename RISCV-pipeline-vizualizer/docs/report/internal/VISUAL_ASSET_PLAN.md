@@ -2,7 +2,7 @@
 
 ## Status
 
-The planned publication assets have been generated from validated application runs. Editable sources, raw data, and capture metadata are retained so each figure can be reproduced or revised without relying on a machine-specific path.
+The publication assets were generated from tested application runs. Editable sources, compact summaries, and capture metadata are retained so each figure can be reproduced or revised without relying on a machine-specific path.
 
 | ID | Asset | Purpose and evidence | Output | Status |
 | --- | --- | --- | --- | --- |
@@ -20,7 +20,7 @@ The planned publication assets have been generated from validated application ru
 
 - `../assets/source/validate_sessions.py` drives the HTTP/Socket.IO flow and exports cycle snapshots.
 - `../assets/source/plot_event_counts.py` derives the event-count table and renders the graph.
-- `validation-data/level*_cycles.csv` and `level*_snapshots.json` retain the raw per-level evidence.
+- `../assets/source/validate_sessions.py` regenerates the raw per-level cycle and snapshot exports in `validation-data/` when they are needed.
 - `../assets/data/validation_summary.json` and `../assets/data/event_counts.csv` retain concise summaries.
 - `../assets/data/screenshot_metadata.json` records the repository revision, viewport, level, program, and exact cycle for each execution capture.
 

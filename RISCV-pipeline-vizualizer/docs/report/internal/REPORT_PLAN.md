@@ -38,7 +38,7 @@ The completed Markdown draft is intended to compress to roughly 7–9 pages of m
 
 ## Selected visuals
 
-The main report uses three reproducible Mermaid diagrams, one landing screenshot, one waveform screenshot, and one combined three-panel hazard figure. The Level 2 forwarding, Level 3 branch flush, and Level 4 load-use stall views provide complementary evidence. The event-count graph remains an internal asset rather than a performance comparison. Publication sources and rendered formats remain beneath `../assets/`; raw cycle exports are retained in `validation-data/`.
+The main report uses three reproducible Mermaid diagrams, one landing screenshot, one waveform screenshot, and one combined three-panel hazard figure. The Level 2 forwarding, Level 3 branch flush, and Level 4 load-use stall views provide complementary evidence. The event-count graph remains an internal asset rather than a performance comparison. Publication sources and rendered formats remain beneath `../assets/`; raw cycle exports can be regenerated with `../assets/source/validate_sessions.py` and are not retained in the final repository.
 
 ## Toolchain used
 

@@ -2,7 +2,7 @@
 
 ## Scope
 
-This internal record describes the final implementation and report validation performed on 21 July 2026. The working tree was based on Git revision `ff31871`; the approved application and documentation changes remained uncommitted, as requested. Paths below are repository-relative, and no account, host, or home-directory information is retained.
+This internal record describes the final implementation and report validation completed on 22 July 2026. The final revision phase began from Git revision `f557803`; the subsequent report and repository-cleanup changes remained uncommitted, as requested. Paths below are repository-relative, and no account, host, or home-directory information is retained.
 
 ## Host and toolchain
 
@@ -63,9 +63,11 @@ The browser was also used to upload, compile, and step Levels 2, 3, and 4. The r
 
 The event totals demonstrate that the expected mechanisms were exercised. They are not a performance comparison because the BinaryFiles and run lengths differ.
 
+The compact summary is retained in `../assets/data/validation_summary.json`. Raw cycle and snapshot exports are not retained in the final repository because `../assets/source/validate_sessions.py` regenerates them when detailed evidence is required.
+
 ## Figures and screenshot privacy
 
-Affected screenshots were recaptured at a 1440 by 900 CSS-pixel viewport. Metadata is stored in `../assets/data/screenshot_metadata.json` with base revision, level, system BinaryFile, cycle, and capture environment. Browser profiles, usernames, hostnames, notifications, and absolute paths are absent. The editable Mermaid sources in `../assets/source/` were exported to both SVG and tightly cropped PDF publication formats in `../assets/diagrams/`.
+Affected screenshots originated from a 1440 by 900 CSS-pixel viewport. The three hazard views use an identical 1189 by 568 pixel publication crop; the waveform uses a 1440 by 520 pixel crop that removes unused workspace while retaining the signal hierarchy and selected traces. Metadata is stored in `../assets/data/screenshot_metadata.json` with base revision, level, system BinaryFile, cycle, and capture environment. Browser profiles, usernames, hostnames, notifications, and absolute paths are absent. The editable Mermaid sources in `../assets/source/` were exported to both SVG and tightly cropped PDF publication formats in `../assets/diagrams/`.
 
 ## Report build and inspection
 
@@ -73,13 +75,13 @@ Affected screenshots were recaptured at a 1440 by 900 CSS-pixel viewport. Metada
 
 | Property | Value |
 | --- | --- |
-| Total pages | 11 |
+| Total pages | 12 |
 | Main text | 8 pages, excluding title, contents, references, and appendix material |
 | Media box | 595.28 × 841.89 points (A4) |
 | Title metadata | `Architecture and Operation of a Web-Based RISC-V Pipeline Debugging Environment` |
 | Author metadata | `Joel Agustín Sanchez` |
 
-All 11 pages were rendered to 1191 by 1684 pixel PNG files at 144 dpi and inspected. The review covered the title page and hyperlinks, contents, commands, troubleshooting and maintenance tables, three generated diagrams, landing screenshot, selected Level 4 waveform signals, combined hazard figure, bibliography, and appendices. No clipped text, table overflow, broken figure, unresolved reference, or machine path was observed. The main document contains no repository URL placeholder or internal Markdown-to-LaTeX production section. Tectonic reported only non-fatal underfull-box warnings in bibliography URLs; no overfull box remained.
+All 12 pages were rendered to 1191 by 1684 pixel PNG files at 144 dpi and inspected. The review covered the title page and hyperlinks, contents, commands, troubleshooting and maintenance tables, three generated diagrams, landing screenshot, selected Level 4 waveform signals, the dedicated full-page hazard figure, bibliography, and appendices. No clipped text, table overflow, broken figure, unresolved reference, or machine path was observed. The main document contains no repository URL placeholder or internal Markdown-to-LaTeX production section. Tectonic reported only non-fatal underfull-box warnings in bibliography URLs; no overfull box remained.
 
 ## Validation boundary and future checks
 

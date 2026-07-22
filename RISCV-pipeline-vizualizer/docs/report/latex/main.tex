@@ -17,7 +17,7 @@
 \usepackage[numbers,sort&compress]{natbib}
 \usepackage[hidelinks]{hyperref}
 
-\graphicspath{{../assets/diagrams/}{../assets/screenshots/}{../assets/graphs/}}
+\graphicspath{{../assets/diagrams/}{../assets/screenshots/}{../assets/graphs/}{../../../images/png_rptu/}}
 \setlength{\parindent}{1.25em}
 \setlength{\parskip}{0.2em}
 \setlength{\headheight}{14pt}
@@ -61,23 +61,26 @@
 
 \begin{titlepage}
   \centering
-  \vspace*{2.5cm}
-  {\Large RPTU Kaiserslautern-Landau\par}
-  \vspace{1.8cm}
+  \vspace*{1.2cm}
+  \includegraphics[width=0.32\textwidth]{RPTU_einzeilig_rot.png}\par
+  \vspace{0.7cm}
+  {\large RPTU Kaiserslautern-Landau\par}
+  \vspace{1.5cm}
   {\huge\bfseries Architecture and Operation of a Web-Based RISC-V Pipeline Debugging Environment\par}
-  \vspace{1cm}
+  \vspace{0.9cm}
   {\Large Master Project\par}
   \vfill
-  \begin{tabular}{@{}r@{\hspace{1em}}l@{}}
-    Author: & Joel Agustín Sanchez \\
-    Supervisor: & \href{https://eit.rptu.de/fgs/eis/people/jauch}{M.Sc. Tobias Jauch} (PhD student) \\
-    Chair: & \href{https://eit.rptu.de/fgs/eis}{\begin{tabular}[t]{@{}l@{}}
-      LEHRSTUHL FÜR ENTWURF \\
-      INFORMATIONSTECHNISCHER SYSTEME \\
-      CHAIR OF ELECTRONIC DESIGN AUTOMATION
-    \end{tabular}} \\
-    Submission date: & 23 July 2026
-  \end{tabular}
+  {\Large Joel Agustín Sanchez\par}
+  \vspace{0.9cm}
+  {\small Supervisor\par}
+  \vspace{0.15cm}
+  {\large\href{https://eit.rptu.de/fgs/eis/people/jauch}{M.Sc. Tobias Jauch}\par}
+  {\small PhD Student\par}
+  \vspace{0.9cm}
+  {\large\href{https://eit.rptu.de/fgs/eis}{Chair of Electronic Design Automation}\par}
+  \vfill
+  {\small 23 July 2026\par}
+  \vspace{0.5cm}
   \vfill
 \end{titlepage}
 
@@ -89,7 +92,7 @@
 \section*{Abstract}
 \addcontentsline{toc}{section}{Abstract}
 
-This report presents a browser-based environment for teaching and debugging a five-stage RISC-V processor written in Chisel. The application connects an editable view of a student's processor sources to a controlled chiseltest simulation and displays instruction flow, registers, hazard signals, logs, and waveform data. A Python service manages uploads and session workspaces, while a TCP bridge exchanges cycle commands and JSON snapshots with the Scala testbench. The design gives students a concrete view of forwarding, stalls, and control-hazard recovery without replacing the processor implementation that they are expected to develop. This report explains installation, classroom use, system structure, representative behavior, and the principal maintenance points. Validation covered all four course levels on Ubuntu 24.04 under WSL2 with Python 3.12, JDK 17, and SBT 1.9.7. The current deployment target is a trusted local teaching environment.
+This report presents a browser-based environment for teaching and debugging a five-stage RISC-V processor written in Chisel. The application connects an editable view of a student's processor sources to a controlled chiseltest simulation and displays instruction flow, registers, hazard signals, logs, and waveform data. A Python service manages uploads and session workspaces, while a TCP bridge exchanges cycle commands and JSON snapshots with the Scala testbench. The design gives students a concrete view of forwarding, stalls, and control-hazard recovery without replacing the processor implementation that they are expected to develop. This report explains installation, classroom use, system structure, representative behavior, and the principal maintenance points. The four supplied reference levels were tested through the complete upload, compilation, and simulation workflow on Ubuntu 24.04 under WSL2 with Python 3.12, JDK 17, and SBT 1.9.7. The current deployment target is a trusted local teaching environment.
 
 \section{Introduction and motivation}\label{sec:introduction}
 
@@ -214,41 +217,45 @@ Path filtering at upload time accepts project material required for the exercise
 
 The testbench first performs the existing headless run that produces a VCD. The service delivers this file through a session-specific endpoint, allowing the bundled Surfer viewer to complement the simplified pipeline display with signal-level timing, as shown in Figure~\ref{fig:waveform}. The testbench then starts the interactive TCP loop, resets the design, and emits the initial state. On each \texttt{step} command it advances the clock, samples the debug bundle, serializes the fields, and sends one line of JSON. The Python service decodes instruction words for presentation, appends the snapshot to session history, and emits an update. This protocol keeps the simulator deterministic from the user's perspective: one accepted command corresponds to one displayed cycle.
 
-\begin{figure}[tbp]
+\begin{center}
   \centering
-  \includegraphics[width=0.88\textwidth]{waveform_view.png}
-  \caption{Generated Level~4 waveform displayed in the bundled Surfer viewer. The selected clock and processor debug signals complement the cycle-level pipeline representation.}
+  \includegraphics[width=0.96\textwidth]{waveform_view.png}
+  \captionof{figure}{Generated Level~4 waveform displayed in the bundled Surfer viewer. The selected clock and processor debug signals complement the cycle-level pipeline representation.}
   \label{fig:waveform}
-\end{figure}
+\end{center}
 
-The current design deliberately preserves the supplied simulation structure and VCD limits. It also preserves processor semantics; forwarding, stalls, branches, memory behavior, and instruction coverage are properties of the uploaded course core and controlled infrastructure, not of the web interface.
+The supplied simulation structure and VCD limits are preserved. Forwarding, stalls, branches, memory behavior, and instruction coverage remain properties of the uploaded course core and controlled infrastructure, not of the web interface.
 
 \section{Demonstrated pipeline behavior}\label{sec:behavior}
 
-Final regression tests exercised uploads for Levels~1 through~4 and completed representative programs at cycles 12, 12, 15, and 51 respectively. Level~1 showed the basic arithmetic pipeline. Level~2 produced forwarding activity without stalls or flushes. Level~3 demonstrated a taken branch and removal of younger instructions. Level~4 exercised forwarding, load-use holds, control-flow recovery, and memory behavior. These run lengths belong to different programs and are not a performance comparison.
+The four supplied reference levels were tested through the complete upload, compilation, and simulation workflow; their representative programs completed at cycles 12, 12, 15, and 51 respectively. Level~1 demonstrated the basic arithmetic pipeline, Level~2 forwarding without stalls or flushes, Level~3 a taken branch and removal of younger instructions, and Level~4 forwarding, load-use holds, control-flow recovery, and memory behavior. Because the programs differ, their run lengths are not a performance comparison.
 
-Figure~\ref{fig:hazards} isolates the mechanisms most useful in a teaching discussion. In the forwarding example, both EX operand selectors are active for the dependent arithmetic instruction at cycle~3. At Level~3 cycle~7, a taken \texttt{beq} in EX redirects the fetch address and asserts the flush. At Level~4 cycle~41, a load-use dependency disables the program-counter write, holds IF/ID, and inserts a bubble.
+Figure~\ref{fig:hazards} compares Level~2 forwarding at cycle~3, a Level~3 taken-branch flush at cycle~7, and a Level~4 load-use hold of the program counter and IF/ID at cycle~41.
 
-\begin{figure}[tbp]
+\clearpage
+\newgeometry{left=1.5cm,right=1.5cm,top=2cm,bottom=2cm}
+\begin{figure}[p]
   \centering
-  \begin{subfigure}[t]{0.48\textwidth}
+  \begin{subfigure}[t]{0.86\textwidth}
     \centering
-    \includegraphics[width=\linewidth,trim=188bp 168bp 0bp 83bp,clip]{level2_forwarding_cycle_03.png}
+    \includegraphics[width=\linewidth]{level2_forwarding_cycle_03.png}
     \caption{Level~2 forwarding, cycle~3.}
-  \end{subfigure}\hfill
-  \begin{subfigure}[t]{0.48\textwidth}
+  \end{subfigure}\par\smallskip
+  \begin{subfigure}[t]{0.86\textwidth}
     \centering
     \includegraphics[width=\linewidth]{level3_branch_flush_cycle_07.png}
     \caption{Level~3 taken branch and flush, cycle~7.}
-  \end{subfigure}\par\medskip
-  \begin{subfigure}[t]{0.48\textwidth}
+  \end{subfigure}\par\smallskip
+  \begin{subfigure}[t]{0.86\textwidth}
     \centering
     \includegraphics[width=\linewidth]{level4_load_use_stall_cycle_41.png}
     \caption{Level~4 load-use stall, cycle~41.}
   \end{subfigure}
-  \caption{Representative hazard behavior: data forwarding, control-hazard flushing, and a load-use stall.}
+  \caption{Representative pipeline-hazard responses: forwarding in Level~2, branch flushing in Level~3, and a load-use stall in Level~4.}
   \label{fig:hazards}
 \end{figure}
+\clearpage
+\restoregeometry
 
 Together, the panels show that the same stage view can explain three distinct responses to dependency and control-flow conditions. Forwarding changes the EX operand source without interrupting instruction issue. A taken branch redirects fetch and invalidates younger fall-through instructions. The load-use case instead holds the front of the pipeline for one cycle because the required memory value is not yet available. The register panel and highlighted paths connect each control decision to the architectural state observed by the student.
 
@@ -262,7 +269,7 @@ Future work should remain proportionate to the deployment goal. Frontend librari
 
 \section{Conclusion}\label{sec:conclusion}
 
-The RISC-V Pipeline Visualizer makes a student's clocked processor behavior inspectable without taking ownership of the processor design. Its browser view connects source files and machine-code input with stage occupancy, architectural state, hazards, logs, and VCD waveforms, while the controlled Chisel testbench remains the authority for simulation. The installation helpers and repository documentation now provide a short transfer path for a supervisor, and the four course levels use consistent descriptions throughout the interface and report. Within its intended trusted local setting, the system is ready to support laboratory demonstrations and cycle-by-cycle debugging. Further development should concentrate on operational robustness and test coverage before broadening deployment or changing processor semantics.
+The RISC-V Pipeline Visualizer makes a student's clocked processor behavior inspectable without taking ownership of the processor design. Its browser view connects source files and machine-code input with stage occupancy, architectural state, hazards, logs, and VCD waveforms, while the controlled Chisel testbench remains the authority for simulation. The installation helpers and repository documentation provide a concise transfer path for a supervisor, and the four course levels use consistent descriptions throughout the interface and report. Within its intended trusted local setting, the system supports laboratory demonstrations and cycle-by-cycle debugging. Further development should concentrate on operational robustness and test coverage before broadening deployment or changing processor semantics.
 
 \bibliographystyle{plainnat}
 \bibliography{references}
@@ -295,6 +302,6 @@ Path & Responsibility \\
 
 \section{Scope of validation}
 
-The final regression used the supplied system BinaryFiles and completed all four detected course levels. It checked shell and Python syntax, setup and startup from outside the repository, upload and detection, compilation without a client-supplied level, interactive stepping, pipeline and register rendering, hazard overlays, sanitized browser messages, VCD delivery, and Surfer loading. Processor ISA conformance beyond the supplied programs and existing Scala tests was not re-certified. Multi-user load, malicious uploads, and public deployment were not tested because they are outside the trusted local teaching scope.
+Evaluation of the complete workflow used the supplied system BinaryFiles and completed all four detected course levels. The evaluation covered shell and Python syntax, setup and startup from outside the repository, upload and detection, compilation without a client-supplied level, interactive stepping, pipeline and register rendering, hazard overlays, sanitized browser messages, VCD delivery, and Surfer loading. Processor ISA conformance beyond the supplied programs and existing Scala tests was not re-certified. Multi-user load, malicious uploads, and public deployment were not tested because they are outside the trusted local teaching scope.
 
 \end{document}

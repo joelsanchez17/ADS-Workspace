@@ -4,6 +4,7 @@
   "capture_date": "2026-07-21",
   "browser": "Chrome for Testing 149.0.7827.55 via Playwright 1.61.0",
   "viewport": "1440x900 CSS pixels",
+  "publication_processing": "The three hazard panels use the same 1189x568-pixel crop. The waveform is cropped to 1440x520 pixels to remove unused lower workspace without rescaling or distortion.",
   "screenshots": [
     {
       "file": "../screenshots/landing_interface.png",

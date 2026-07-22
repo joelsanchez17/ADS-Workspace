@@ -250,7 +250,7 @@ Session state is held in the process-local `active_sessions` dictionary as the S
 
 The repository contains Scala/chiseltest suites in each course skeleton/solution and the controlled `LivePipelineTest`. The course suites test arithmetic, forwarding, and branch behavior with cycle-level expectations. There are no Python backend tests, frontend unit/end-to-end tests, API tests, or automated level-detection/path-safety tests.
 
-The provisioned validation exercised the complete path from HTTP upload through SBT/chiseltest and the TCP bridge to browser rendering. Representative programs for Levels 1–4 reached `coreDone`; raw snapshots and cycle CSV files are retained in `validation-data/`, while compact summaries remain in `../assets/data/`. The browser captures and waveform view are retained in `../assets/screenshots/`. Concurrently compiling several sessions can retain substantial JVM memory and delay later jobs, so this is a resource-scaling concern rather than a functional validation target.
+The provisioned validation exercised the complete path from HTTP upload through SBT/chiseltest and the TCP bridge to browser rendering. Representative programs for Levels 1–4 reached `coreDone`; compact summaries remain in `../assets/data/`, while raw snapshots and cycle CSV files can be regenerated with `../assets/source/validate_sessions.py`. The browser captures and waveform view are retained in `../assets/screenshots/`. Concurrently compiling several sessions can retain substantial JVM memory and delay later jobs, so this is a resource-scaling concern rather than a functional validation target.
 
 ## Useful demonstration programs
 
